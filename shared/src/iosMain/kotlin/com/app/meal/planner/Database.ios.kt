@@ -2,8 +2,10 @@
 package com.app.meal.planner.core.database
 
 import com.app.meal.planner.core.model.*
+// SQLite handles are opaque C structs, generated outside the sqlite function package.
+import cnames.structs.sqlite3
+import cnames.structs.sqlite3_stmt
 import kotlinx.cinterop.*
-import kotlinx.serialization.json.Json
 import platform.Foundation.*
 import sqlite.*
 

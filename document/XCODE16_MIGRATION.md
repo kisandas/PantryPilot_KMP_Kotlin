@@ -47,6 +47,8 @@ An actual Xcode 16.0 build cannot be executed on the Windows development host. A
 
 ## Starting data and existing records
 
+The iOS SQLite implementation explicitly imports `cnames.structs.sqlite3` and `cnames.structs.sqlite3_stmt`. These opaque C handle types are not supplied by `import sqlite.*`; that package supplies SQLite functions and constants. Copy the updated Database.ios.kt when resolving an unresolved handle-type reference. This source-only fix does not change the database schema or Android/web implementations. Actual Apple compilation still needs the Mac verification step above.
+
 If Xcode reports `gradlew: Permission denied` during PhaseScriptExecution, use the updated Compile Kotlin Framework build phase: `sh ./gradlew :shared:embedAndSignAppleFrameworkForXcode`. This does not require an executable permission bit on the wrapper copied from Windows. The Unix wrapper is stored with LF line endings. Alternatively, `chmod +x gradlew` in the project root enables direct execution on your Mac. Clean Build Folder and rebuild after updating the project.
 
 Fresh databases receive predefined pantry/shopping entries exactly once. Existing records are retained and merely gain an initialData marker. Clearing or exhausting a list does not seed it again; confirmed reset leaves it empty. Load demo data controls and the demo-loading repository method were removed. Future new entries continue to save to the same SQLite / IndexedDB stores, and order/stock transactions remain atomic.
