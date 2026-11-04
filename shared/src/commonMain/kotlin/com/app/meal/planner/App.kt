@@ -28,6 +28,7 @@ import org.koin.compose.KoinApplication
 import org.koin.compose.koinInject
 import org.koin.compose.getKoin
 import com.app.meal.planner.core.designsystem.RecipeArtwork
+import com.app.meal.planner.core.designsystem.NavigationIcon
 
 @Composable fun App(databaseFactory: () -> LocalDatabase = { createDatabase() }) {
     val local = remember { databaseFactory() }
@@ -61,13 +62,14 @@ import com.app.meal.planner.core.designsystem.RecipeArtwork
     MaterialTheme(colorScheme=colors) {
         BoxWithConstraints(Modifier.fillMaxSize().background(colors.background).safeContentPadding()) {
             val wide = maxWidth >= 850.dp
-            Scaffold(snackbarHost={ SnackbarHost(snackbar) },bottomBar={ if(!wide) NavigationBar { listOf("Home","Pantry","Recipes","Shopping","Orders").forEach { tab -> NavigationBarItem(selected=s.tab==tab,onClick={vm.accept(Intent.Navigate(tab))},icon={Text(symbol(tab))},label={Text(tab)}) } } }) { padding ->
+            val recipeColumns = when { maxWidth >= 1200.dp -> 3; maxWidth >= 600.dp -> 2; else -> 1 }
+            Scaffold(snackbarHost={ SnackbarHost(snackbar) },bottomBar={ if(!wide) NavigationBar { listOf("Home","Pantry","Recipes","Shopping","Orders").forEach { tab -> NavigationBarItem(selected=s.tab==tab,onClick={vm.accept(Intent.Navigate(tab))},icon={NavigationIcon(tab)},label={Text(tab)}) } } }) { padding ->
                 Row(Modifier.fillMaxSize().padding(padding)) {
                     if(wide) Column(Modifier.width(200.dp).fillMaxHeight().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
                         Text("PantryPilot",fontSize=24.sp,fontWeight=FontWeight.Bold,color=colors.primary)
                         Text("A little less waste.\nA lot more possibility.",style=MaterialTheme.typography.bodySmall)
                         Spacer(Modifier.height(24.dp))
-                        listOf("Home","Pantry","Recipes","Shopping","Orders","History","Settings").forEach { tab -> FilledTonalButton({vm.accept(Intent.Navigate(tab))},Modifier.fillMaxWidth(),colors=ButtonDefaults.filledTonalButtonColors(containerColor=if(s.tab==tab) colors.primaryContainer else colors.surface)) { Text("${symbol(tab)}  $tab") } }
+                        listOf("Home","Pantry","Recipes","Shopping","Orders","History","Settings").forEach { tab -> FilledTonalButton({vm.accept(Intent.Navigate(tab))},Modifier.fillMaxWidth(),colors=ButtonDefaults.filledTonalButtonColors(containerColor=if(s.tab==tab) colors.primaryContainer else colors.surface)) { NavigationIcon(tab); Spacer(Modifier.width(10.dp)); Text(tab) } }
                         Spacer(Modifier.weight(1f)); Text("LOCAL BY DESIGN\nYour kitchen, your device.",style=MaterialTheme.typography.labelSmall)
                     }
                     Box(Modifier.weight(1f),contentAlignment=Alignment.TopCenter) {
@@ -86,7 +88,7 @@ import com.app.meal.planner.core.designsystem.RecipeArtwork
                                         item { Hero("Good food starts here.","Keep track of what you have. Make something delicious.") }
                                         item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { Stat("Stock batches",s.records.pantry.count {it.quantity>0},Modifier.weight(1f)); Stat("Expiring soon",s.records.pantry.count { it.quantity>0 && expiry(it.expiryDate,s.today)==Expiry.Soon },Modifier.weight(1f)); Stat("To pick up",s.records.shopping.count { !it.isPurchased },Modifier.weight(1f)) } }
                                         item { Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { Button({vm.accept(Intent.Edit(Editor()))}) { Text("+ Ingredient") }; OutlinedButton({vm.accept(Intent.Navigate("Shopping"))}) { Text("Shopping list") } } }
-                                        if(s.records.pantry.isEmpty()) item { Empty("A fresh start for your kitchen","Add your first ingredient or explore with demo data.","Load demo data") { vm.accept(Intent.Confirm("demo")) } }
+                                        if(s.records.pantry.isEmpty()) item { Empty("A fresh start for your kitchen","Add an ingredient to start tracking your stock.","Add ingredient") { vm.accept(Intent.Edit(Editor())) } }
                                         item { Heading("Use these first", "A little care today means less waste tomorrow.") }
                                         val soon = s.records.pantry.filter { it.quantity>0 && expiry(it.expiryDate,s.today)==Expiry.Soon }.sortedBy { it.expiryDate }
                                         if(soon.isEmpty()) item { Text("Nothing expiring in the next three days.") }
@@ -110,10 +112,10 @@ import com.app.meal.planner.core.designsystem.RecipeArtwork
                                         val selected = bundledRecipes.find { it.id==s.recipes.selected }
                                         if(selected!=null) {
                                             item { TextButton({vm.accept(Intent.RecipeFilter(s.recipes.copy(selected=null)))}) {Text("‹ All recipes")} }
-                                            item { Hero("${selected.visual}  ${selected.title}","${selected.preparationMinutes} min · ${selected.servings} servings · ${selected.category}") }
-                                            item { RecipeArtwork(selected.title,selected.id.toInt()); Text(selected.description); FavoriteButton(selected,s) { vm.accept(Intent.Favorite(selected.id)) } }
+                                            item { Hero(selected.title,"${selected.preparationMinutes} min · ${selected.servings} servings · ${selected.category}") }
+                                            item { RecipeArtwork(selected.title,selected.id.toInt(),height=240.dp); Text(selected.description); FavoriteButton(selected,s) { vm.accept(Intent.Favorite(selected.id)) } }
                                             item { Heading("Ingredients","Stock checks quantities in matching units. Expired batches are excluded.") }
-                                            items(selected.ingredients) { ingredient -> val held=s.records.pantry.filter {it.normalizedName==ingredient.normalizedName && it.unit==ingredient.unit && it.quantity>0 && expiry(it.expiryDate,s.today)!=Expiry.Expired}.sumOf {it.quantity}; val has=held+STOCK_EPSILON>=ingredient.quantity; Card { Row(Modifier.fillMaxWidth().padding(16.dp)) { Text("${ingredient.displayName} · ${number(ingredient.quantity)} ${ingredient.unit}",Modifier.weight(1f)); Text("${if(has) "✓ Enough" else "+ Short"} · ${stockNumber(held)} ${ingredient.unit} in stock",color=if(has) colors.primary else colors.secondary) } } }
+                                            items(selected.ingredients) { ingredient -> val held=s.records.pantry.filter {it.normalizedName==ingredient.normalizedName && it.unit==ingredient.unit && it.quantity>0 && expiry(it.expiryDate,s.today)!=Expiry.Expired}.sumOf {it.quantity}; val has=held+STOCK_EPSILON>=ingredient.quantity; Card { Row(Modifier.fillMaxWidth().padding(16.dp)) { Text("${ingredient.displayName} · ${number(ingredient.quantity)} ${ingredient.unit}",Modifier.weight(1f)); Text("${if(has) "Enough" else "+ Short"} · ${stockNumber(held)} ${ingredient.unit} in stock",color=if(has) colors.primary else colors.secondary) } } }
                                             item { if(recipeShortages(selected,s.records.pantry,s.today).isEmpty()) Text("All required quantities are in stock.") else Button({vm.accept(Intent.Missing(selected.id))},enabled=!s.saving) { Text("Add stock shortfalls to shopping") } }
                                             item {
                                                 val plan=runCatching {recipeDeductions(selected,s.records.pantry,s.today)}
@@ -130,7 +132,7 @@ import com.app.meal.planner.core.designsystem.RecipeArtwork
                                             item { Text("Can cook checks unexpired quantities in matching units. Other cards show ingredient names present.",style=MaterialTheme.typography.bodySmall) }
                                             val recipes=rank(bundledRecipes,s.records.pantry,s.today).filter { (it.title.contains(s.recipes.search,true) || it.ingredients.any { i -> i.displayName.contains(s.recipes.search,true) }) && when(s.recipes.filter) { "Can cook" -> recipeShortages(it,s.records.pantry,s.today).isEmpty(); "Favorites" -> it.id in s.records.favorites; else -> true } }
                                             if(recipes.isEmpty()) item { Text("No recipes match. Try another filter or add pantry ingredients.") }
-                                            items(recipes.chunked(if(wide) 2 else 1)) { row -> Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) { row.forEach { recipe -> Box(Modifier.weight(1f)) { RecipeCard(recipe,s,{vm.accept(Intent.RecipeFilter(s.recipes.copy(selected=recipe.id)))},{vm.accept(Intent.Favorite(recipe.id))}) } }; if(wide && row.size==1) Spacer(Modifier.weight(1f)) } }
+                                            items(recipes.chunked(recipeColumns)) { row -> Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) { row.forEach { recipe -> Box(Modifier.weight(1f)) { RecipeCard(recipe,s,{vm.accept(Intent.RecipeFilter(s.recipes.copy(selected=recipe.id)))},{vm.accept(Intent.Favorite(recipe.id))}) } }; repeat(recipeColumns-row.size) { Spacer(Modifier.weight(1f)) } } }
                                         }
                                     }
                                     "Shopping" -> {
@@ -150,7 +152,6 @@ import com.app.meal.planner.core.designsystem.RecipeArtwork
                                         item { Hero("Your kitchen, your way.","PantryPilot · Version 1.0.0") }
                                         item { Heading("Appearance","Choose what feels right."); ChoiceRow(listOf("System","Light","Dark"),s.records.theme) {vm.accept(Intent.Theme(it))} }
                                         item { Heading("Local data","Everything is stored on this device. No account or cross-device synchronization.") }
-                                        item { OutlinedButton({vm.accept(Intent.Confirm("demo"))}) {Text("Load demo data")} }
                                         item { OutlinedButton({vm.accept(Intent.Confirm("reset"))}) {Text("Reset all local data")} }
                                         item { Text("Made for less food waste and easier everyday cooking. Recipes are bundled; no API keys or server needed. Clearing this site's browser data removes its database.") }
                                     }
@@ -162,15 +163,14 @@ import com.app.meal.planner.core.designsystem.RecipeArtwork
                 }
             }
             InventoryDialogs(s,vm::accept)
-            s.editor?.let { editor -> EditorDialog(editor,s.saving,{vm.accept(Intent.Edit(it))},{vm.accept(Intent.Save)},{vm.accept(Intent.Edit(null))}) }
+            s.editor?.let { editor -> EditorDialog(editor,s.saving,{field,value -> vm.accept(Intent.ChangeForm(FormType.Ingredient,field,value))},{vm.accept(Intent.Save)},{vm.accept(Intent.Edit(null))}) }
             s.settings.confirmation?.let { action ->
                 val recipe=bundledRecipes.find {"cook:${it.id}"==action}
-                AlertDialog(onDismissRequest={if(!s.saving) vm.accept(Intent.Confirm(null))},title={Text(when {recipe!=null -> "Cook & deduct stock?";action.startsWith("cancel-order:") -> "Cancel outstanding purchase?";action=="reset" -> "Reset all local data?";action=="demo" -> "Load demo data?";action=="clear" -> "Clear purchased items?";else -> "Delete this item?"})},text={Text(when {recipe!=null -> "${recipe.title} · ${recipe.servings} servings\n\n"+recipe.ingredients.joinToString("\n") {"${it.displayName}: ${stockNumber(it.quantity)} ${it.unit}"}+"\n\nThese quantities will be subtracted from unexpired batches and recorded in stock history. Viewing the recipe never uses stock.";action.startsWith("cancel-order:") -> "Received stock stays in your pantry. Only outstanding quantities return to Shopping. This order will be closed.";action=="demo" -> "Adds missing sample batches and shopping items. Existing stock balances and personal items are kept.";action.startsWith("pantry:") -> "The batch will be removed and its remaining quantity recorded as removed stock. Its history is kept.";else -> "This change cannot be undone."})},confirmButton={TextButton(enabled=!s.saving,onClick={when {action.startsWith("pantry:") -> vm.accept(Intent.Delete(action.substringAfter(":"),false));action.startsWith("shopping:") -> vm.accept(Intent.Delete(action.substringAfter(":"),true));else -> vm.accept(Intent.ExecuteConfirmation)}}) {Text("Confirm")}},dismissButton={TextButton(enabled=!s.saving,onClick={vm.accept(Intent.Confirm(null))}) {Text("Cancel")}})
+                AlertDialog(onDismissRequest={if(!s.saving) vm.accept(Intent.Confirm(null))},title={Text(when {recipe!=null -> "Cook & deduct stock?";action.startsWith("cancel-order:") -> "Cancel outstanding purchase?";action=="reset" -> "Reset all local data?";action=="clear" -> "Clear purchased items?";else -> "Delete this item?"})},text={Text(when {recipe!=null -> "${recipe.title} · ${recipe.servings} servings\n\n"+recipe.ingredients.joinToString("\n") {"${it.displayName}: ${stockNumber(it.quantity)} ${it.unit}"}+"\n\nThese quantities will be subtracted from unexpired batches and recorded in stock history. Viewing the recipe never uses stock.";action.startsWith("cancel-order:") -> "Received stock stays in your pantry. Only outstanding quantities return to Shopping. This order will be closed.";action.startsWith("pantry:") -> "The batch will be removed and its remaining quantity recorded as removed stock. Its history is kept.";else -> "This change cannot be undone."})},confirmButton={TextButton(enabled=!s.saving,onClick={when {action.startsWith("pantry:") -> vm.accept(Intent.Delete(action.substringAfter(":"),false));action.startsWith("shopping:") -> vm.accept(Intent.Delete(action.substringAfter(":"),true));else -> vm.accept(Intent.ExecuteConfirmation)}}) {Text("Confirm")}},dismissButton={TextButton(enabled=!s.saving,onClick={vm.accept(Intent.Confirm(null))}) {Text("Cancel")}})
             }
         }
     }
 }
-private fun symbol(tab: String) = when(tab) { "Home" -> "⌂"; "Pantry" -> "▦"; "Recipes" -> "♧"; "Shopping" -> "☑"; "Orders" -> "▤"; "History" -> "↺"; else -> "⚙" }
 private fun number(q: Double) = if(q % 1.0==0.0) q.toLong().toString() else q.toString()
 @Composable private fun Heading(title: String, subtitle: String) { Column(verticalArrangement=Arrangement.spacedBy(4.dp)) { Text(title,style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold); Text(subtitle,style=MaterialTheme.typography.bodyMedium,color=MaterialTheme.colorScheme.onSurfaceVariant) } }
 @Composable private fun Hero(title: String,subtitle: String) { Card(colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),shape=RoundedCornerShape(24.dp)) { Column(Modifier.fillMaxWidth().padding(26.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) { Text("FRESH IDEAS, LESS WASTE",style=MaterialTheme.typography.labelSmall); Text(title,style=MaterialTheme.typography.headlineMedium,fontWeight=FontWeight.Bold); Text(subtitle) } } }
@@ -189,17 +189,37 @@ private fun number(q: Double) = if(q % 1.0==0.0) q.toLong().toString() else q.to
         StockControls(item,s,dispatch)
     } }
 }
-@Composable private fun FavoriteButton(recipe: Recipe,s: PilotUiState,click: ()->Unit) { TextButton(click,enabled=!s.saving) {Text(if(recipe.id in s.records.favorites) "♥ Saved" else "♡ Favorite")} }
-@Composable private fun RecipeCard(recipe: Recipe,s: PilotUiState,open: ()->Unit,favorite: ()->Unit) { Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp)) { Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) { Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { Box(Modifier.weight(1f)) { RecipeArtwork(recipe.title,recipe.id.toInt()) };FavoriteButton(recipe,s,favorite) }; Text(recipe.category.uppercase(),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary); Text(recipe.title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold); Text("${recipe.preparationMinutes} min · ${recipe.ingredients.size-missing(recipe,s.records.pantry,s.today).size}/${recipe.ingredients.size} ingredients available",style=MaterialTheme.typography.bodySmall); TextButton(open){Text("View recipe →")} } } }
-@Composable private fun EditorDialog(e: Editor,saving: Boolean,change: (Editor)->Unit,save: ()->Unit,cancel: ()->Unit) {
+@Composable private fun FavoriteButton(recipe: Recipe,s: PilotUiState,click: ()->Unit) { TextButton(click,enabled=!s.saving) {Text(if(recipe.id in s.records.favorites) "Saved" else "Favorite")} }
+@Composable private fun RecipeCard(recipe: Recipe,s: PilotUiState,open: ()->Unit,favorite: ()->Unit) {
+    Card(Modifier.fillMaxWidth(),shape=RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            RecipeArtwork(recipe.title,recipe.id.toInt())
+            Row(verticalAlignment=Alignment.CenterVertically) {
+                Text(recipe.category.uppercase(),Modifier.weight(1f),style=MaterialTheme.typography.labelSmall,color=MaterialTheme.colorScheme.primary)
+                FavoriteButton(recipe,s,favorite)
+            }
+            Text(recipe.title,style=MaterialTheme.typography.titleLarge,fontWeight=FontWeight.Bold,minLines=2)
+            Text("${recipe.preparationMinutes} min · ${recipe.servings} servings",style=MaterialTheme.typography.bodySmall)
+            Text("${recipe.ingredients.size-missing(recipe,s.records.pantry,s.today).size}/${recipe.ingredients.size} ingredient names in your pantry",style=MaterialTheme.typography.bodySmall)
+            TextButton(open,Modifier.fillMaxWidth()) {Text("View recipe")}
+        }
+    }
+}
+@Composable private fun EditorDialog(e: Editor,saving: Boolean,change: (FormField,String)->Unit,save: ()->Unit,cancel: ()->Unit) {
     AlertDialog(onDismissRequest={if(!saving) cancel()},title={Text("${if(e.id==null) "Add" else "Edit"} ${if(e.shopping) "shopping item" else "ingredient"}")},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-        OutlinedTextField(e.name,{change(e.copy(name=it))},label={Text("Name")},singleLine=true,enabled=!saving,isError="name" in e.errors,supportingText={e.errors["name"]?.let {Text(it)}})
-        OutlinedTextField(e.quantity,{change(e.copy(quantity=it))},label={Text("Quantity")},singleLine=true,enabled=!saving,isError="quantity" in e.errors,supportingText={e.errors["quantity"]?.let {Text(it)}})
-        Text("Unit"); if(e.id!=null && !e.shopping) Text("${e.unit} · fixed for this stock batch") else ChoiceRow(units,e.unit) { if(!saving) change(e.copy(unit=it)) }
+        OutlinedTextField(e.name,{change(FormField.Name,it)},label={Text("Name")},singleLine=true,enabled=!saving,isError="name" in e.errors,supportingText={e.errors["name"]?.let {Text(it)}})
+        OutlinedTextField(e.quantity,{change(FormField.Quantity,it)},label={Text("Quantity")},singleLine=true,enabled=!saving,isError="quantity" in e.errors,supportingText={e.errors["quantity"]?.let {Text(it)}})
+        Text("Unit"); if(e.id!=null && !e.shopping) Text("${e.unit} · fixed for this stock batch") else ChoiceRow(units,e.unit) { if(!saving) change(FormField.Unit,it) }
         if(!e.shopping && e.id!=null) Text("Editing quantity records a stock count correction. Use stock records consumption; a new purchase should be received as a new batch.",style=MaterialTheme.typography.bodySmall)
-        if(!e.shopping) { Text("Category");ChoiceRow(Category.entries.map {it.name},e.category.name) {if(!saving) change(e.copy(category=Category.valueOf(it)))};OutlinedTextField(e.date,{change(e.copy(date=it))},label={Text("Expiry YYYY-MM-DD (optional)")},singleLine=true,enabled=!saving,isError="date" in e.errors,supportingText={Text(e.errors["date"] ?: "Past dates are allowed and shown as expired.")}) }
+        if(!e.shopping) { Text("Category");ChoiceRow(Category.entries.map {it.name},e.category.name) {if(!saving) change(FormField.Category,it)};OutlinedTextField(e.date,{change(FormField.Date,it)},label={Text("Expiry YYYY-MM-DD (optional)")},singleLine=true,enabled=!saving,isError="date" in e.errors,supportingText={Text(e.errors["date"] ?: "Past dates are allowed and shown as expired.")}) }
     }},confirmButton={Button(save,enabled=!saving){Text(if(saving) "Saving…" else "Save")}},dismissButton={TextButton(cancel,enabled=!saving){Text("Cancel")}})
 }
+
+
+
+
+
+
 
 
 

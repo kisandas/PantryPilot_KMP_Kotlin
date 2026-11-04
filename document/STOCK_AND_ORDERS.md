@@ -51,6 +51,7 @@ The UI, order/stock models, rules, row codec, repository and state owner are sha
 
 Existing records are loaded without resetting their balances. The first successful upgraded load records their opening balances once. Subsequent loading does not duplicate opening history. New records use additional `order`, `movement` and `stockTracking` record kinds in the existing database table/object store; no destructive table or database recreation occurs.
 
-Do not run an older app version against an upgraded database: the old version does not understand order/history records. Reset local data intentionally removes orders and stock history as well as pantry and shopping data. Demo loading adds missing demo batches and preserves existing demo quantities, so it cannot replenish stock merely because you consumed it.
+Do not run an older app version against an upgraded database: the old version does not understand order/history records. Reset local data intentionally removes orders and stock history as well as pantry and shopping data. Predefined pantry/shopping entries are inserted once on a fresh database. No Load demo data action remains. Existing records are preserved; resets and depletion do not replenish starter stock.
 
 Data remains local to the current app/device/browser origin. Keep one active editing browser tab; concurrent multi-tab edits and device synchronization are not supported. The app has no automatic consumption sensors or external order integration.
+

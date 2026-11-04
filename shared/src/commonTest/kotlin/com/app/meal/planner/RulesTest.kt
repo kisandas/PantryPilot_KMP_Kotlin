@@ -93,9 +93,10 @@ class RulesTest {
 }
 private class FixedClock: DateProvider { override fun today()=LocalDate.parse("2026-11-04");override fun timestamp()=1L }
 private class FakeDatabase: LocalDatabase {
-    var data=Records();var fail=false
+    var data=Records(initialDataSeeded=true);var fail=false
     override suspend fun read(): Records { check(!fail){"Disk unavailable"};return data }
     override suspend fun write(records: Records) {check(!fail){"Disk unavailable"}; data=records}
 }
+
 
 

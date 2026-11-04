@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -13,6 +12,10 @@ kotlin {
     }
 
     sourceSets {
+        jsMain {
+            kotlin.srcDir("src/webMain/kotlin")
+            resources.srcDir("src/webMain/resources")
+        }
         commonMain.dependencies {
             implementation(project(":shared"))
 
@@ -30,3 +33,5 @@ tasks.register<Sync>("packageWebPreview") {
     from(layout.buildDirectory.dir("processedResources/js/main"))
     into(layout.buildDirectory.dir("dist/js/developmentExecutable"))
 }
+
+

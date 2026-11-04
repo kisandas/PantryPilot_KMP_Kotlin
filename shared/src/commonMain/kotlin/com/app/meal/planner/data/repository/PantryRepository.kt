@@ -14,18 +14,20 @@ class PantryRepository(private val database: LocalDatabase, private val clock: D
     private val mutable = MutableStateFlow(Records())
     val records = mutable.asStateFlow()
     suspend fun load() = mutex.withLock {
-        val loaded = database.read()
+        val stored = database.read()
+        val fresh = !stored.stockTrackingInitialized && stored.pantry.isEmpty() && stored.shopping.isEmpty() && stored.orders.isEmpty() && stored.movements.isEmpty() && stored.favorites.isEmpty() && stored.theme=="System"
+        val loaded = if(!stored.initialDataSeeded && fresh) predefinedRecords(clock) else stored.copy(initialDataSeeded=true)
         val migrated = if(loaded.stockTrackingInitialized) loaded else loaded.copy(
             stockTrackingInitialized = true,
             movements = loaded.movements + loaded.pantry.map { p ->
                 StockMovement("opening:${p.id}",p.id,p.name,p.unit,MovementType.Opening,p.quantity,p.quantity,clock.timestamp(),"Stock balance when tracking was enabled",expiryDate=p.expiryDate)
             },
         )
-        if(migrated != loaded) database.write(migrated)
+        if(migrated != stored) database.write(migrated)
         mutable.value = migrated
     }
     suspend fun update(transform: (Records) -> Records) = mutex.withLock {
-        val next = transform(mutable.value).copy(stockTrackingInitialized=true)
+        val next = transform(mutable.value).copy(stockTrackingInitialized=true,initialDataSeeded=true)
         database.write(next)
         mutable.value = next
     }
@@ -144,15 +146,6 @@ class PantryRepository(private val database: LocalDatabase, private val clock: D
             current.copy(shopping=merged)
         }
         return count
-    }
-    suspend fun demo() = update { old ->
-        val today = clock.today()
-        val names = listOf("Tomato", "Spinach", "Egg", "Rice", "Milk", "Chickpeas", "Olive oil", "Yogurt")
-        val categories = listOf(Category.Vegetables,Category.Vegetables,Category.Protein,Category.Grains,Category.Dairy,Category.Protein,Category.Other,Category.Dairy)
-        val offsets = listOf(1,0,3,30,-1,20,null,6)
-        val items = names.mapIndexed { index,name -> PantryItem("demo-$index",name,normalize(name),categories[index],if(index==3) 500.0 else 2.0,if(index==3) "g" else "piece",offsets[index]?.let { today.plus(it,DateTimeUnit.DAY).toString() },clock.timestamp(),clock.timestamp()) }
-        val additions = items.filter { item -> old.pantry.none { it.id==item.id } }
-        old.copy(pantry=old.pantry+additions,movements=old.movements+additions.map { movement(it,MovementType.Opening,it.quantity,it.quantity,"Demo starting stock") },shopping=mergeShopping(old.shopping,listOf(ShoppingItem("demo-shop-1","Pasta","pasta",250.0,"g",createdAt=clock.timestamp()),ShoppingItem("demo-shop-2","Lemon","lemon",2.0,"piece",true,clock.timestamp()))))
     }
 }
 

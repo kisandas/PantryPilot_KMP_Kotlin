@@ -12,7 +12,7 @@ const server = http.createServer((req,res) => {
   try { relative = decodeURIComponent(req.url.split('?')[0]); } catch { res.writeHead(400).end(); return; }
   let file = path.resolve(root, '.' + (relative === '/' ? '/index.html' : relative));
   if (!file.startsWith(root + path.sep)) { res.writeHead(403).end(); return; }
-  const mime = {'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.wasm':'application/wasm','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.ttf':'font/ttf'}[path.extname(file)] || 'application/octet-stream';
+  const mime = {'.html':'text/html','.js':'application/javascript','.mjs':'application/javascript','.wasm':'application/wasm','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ttf':'font/ttf'}[path.extname(file)] || 'application/octet-stream';
   fs.readFile(file,(err,body) => {
     if(err) { res.writeHead(404,{'Content-Type':'text/plain','Cache-Control':'no-store'}).end('Build asset not found. Rebuild the web preview, then refresh.');return; }
     res.writeHead(200,{'Content-Type':mime,'Cache-Control':'no-store'});res.end(body);
@@ -26,5 +26,6 @@ server.listen(port,'127.0.0.1',() => {
   console.log('PantryPilot preview: http://localhost:' + port);
   console.log('Serving: ' + root);
 });
+
 
 

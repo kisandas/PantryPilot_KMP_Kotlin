@@ -1,29 +1,33 @@
 package com.app.meal.planner.core.designsystem
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import pantrypilot.shared.generated.resources.*
 
-/** Vector illustration drawn locally on every platform; no image requests or font glyph dependency. */
-@Composable fun RecipeArtwork(title: String, seed: Int) {
-    Canvas(Modifier.fillMaxWidth().height(112.dp).semantics { contentDescription = "Illustrated bowl for $title" }) {
-        drawRoundRect(Color(0xFFE8EDD9),cornerRadius=androidx.compose.ui.geometry.CornerRadius(24f,24f))
-        val center=Offset(size.width/2,size.height/2)
-        val radius=size.height*.41f
-        drawCircle(Color(0xFFCBD5BA),radius,center+Offset(0f,4f))
-        drawCircle(Color(0xFFFFFCF1),radius,center)
-        drawCircle(Color(0xFFE1C58E),radius*.75f,center)
-        repeat(8) { i ->
-            val x = center.x + ((i*37+seed*11)%71-35)*radius/52
-            val y = center.y + ((i*23+seed*7)%61-30)*radius/52
-            drawOval(if(i%3==0) Color(0xFFD86846) else Color(0xFF527D46),Offset(x-radius*.16f,y-radius*.11f),Size(radius*.36f,radius*.24f))
-        }
+/** Real photographs are bundled in shared resources; rendering never fetches remote images. */
+@Composable fun RecipeArtwork(title: String,seed: Int,height: Dp=160.dp) {
+    val photo=when(seed) {
+        1 -> Res.drawable.recipe_01
+        2 -> Res.drawable.recipe_02
+        3 -> Res.drawable.recipe_03
+        4 -> Res.drawable.recipe_04
+        5 -> Res.drawable.recipe_05
+        6 -> Res.drawable.recipe_06
+        7 -> Res.drawable.recipe_07
+        8 -> Res.drawable.recipe_08
+        9 -> Res.drawable.recipe_09
+        10 -> Res.drawable.recipe_10
+        11 -> Res.drawable.recipe_11
+        else -> Res.drawable.recipe_12
     }
+    Image(painterResource(photo),contentDescription=title,contentScale=ContentScale.Crop,
+        modifier=Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp)))
 }

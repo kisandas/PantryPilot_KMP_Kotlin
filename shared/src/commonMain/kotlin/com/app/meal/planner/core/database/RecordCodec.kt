@@ -13,6 +13,7 @@ fun encodeRows(records: Records): List<DatabaseRow> = buildList {
     records.orders.forEach { add(DatabaseRow("order", it.id, Json.encodeToString(it))) }
     records.movements.forEach { add(DatabaseRow("movement", it.id, Json.encodeToString(it))) }
     add(DatabaseRow("stockTracking", "version", if(records.stockTrackingInitialized) "1" else "0"))
+    add(DatabaseRow("initialData", "version", if(records.initialDataSeeded) "1" else "0"))
 }
 fun decodeRows(rows: List<DatabaseRow>): Records {
     val pantry = mutableListOf<PantryItem>()
@@ -22,6 +23,7 @@ fun decodeRows(rows: List<DatabaseRow>): Records {
     val movements = mutableListOf<StockMovement>()
     var theme = "System"
     var initialized = false
+    var seeded = false
     rows.forEach { row -> when(row.kind) {
         "pantry" -> pantry.add(Json.decodeFromString<PantryItem>(row.payload))
         "shopping" -> shopping.add(Json.decodeFromString<ShoppingItem>(row.payload))
@@ -30,7 +32,8 @@ fun decodeRows(rows: List<DatabaseRow>): Records {
         "order" -> orders.add(Json.decodeFromString<PurchaseOrder>(row.payload))
         "movement" -> movements.add(Json.decodeFromString<StockMovement>(row.payload))
         "stockTracking" -> initialized = row.payload == "1"
+        "initialData" -> seeded = row.payload == "1"
         else -> error("Database contains a newer record type. Update PantryPilot before editing data.")
     } }
-    return Records(pantry,shopping,favorites,theme,orders,movements,initialized)
+    return Records(pantry,shopping,favorites,theme,orders,movements,initialized,seeded)
 }

@@ -19,6 +19,8 @@ data class StockAction(val itemId: String, val waste: Boolean = false, val quant
 data class ReceiptEditor(val orderId: String? = null, val lineId: String? = null, val shoppingItemId: String? = null, val quantity: String, val date: String = "", val category: Category = Category.Other, val error: String? = null)
 data class OrderEditor(val order: PurchaseOrder? = null, val store: String = "", val notes: String = "", val quantities: Map<String,String> = emptyMap(), val error: String? = null)
 data class OrdersUiState(val filter: String = "All", val selected: String? = null)
+enum class FormType { Ingredient, Stock, Receipt, Order }
+enum class FormField { Name, Quantity, Unit, Category, Date, Note, Waste, Store, OrderLineQuantity }
 data class PilotUiState(val records: Records = Records(), val loading: Boolean = true, val saving: Boolean = false, val error: String? = null, val tab: String = "Home", val pantry: PantryUiState = PantryUiState(), val recipes: RecipesUiState = RecipesUiState(), val shopping: ShoppingUiState = ShoppingUiState(), val dashboard: DashboardUiState = DashboardUiState(), val settings: SettingsUiState = SettingsUiState(), val editor: Editor? = null, val today: kotlinx.datetime.LocalDate,
     val stockAction: StockAction? = null, val receipt: ReceiptEditor? = null, val orderEditor: OrderEditor? = null, val orders: OrdersUiState = OrdersUiState(), val historyItemId: String? = null)
 sealed interface Intent {
@@ -46,6 +48,7 @@ sealed interface Intent {
     data class PlaceOrder(val id: String): Intent
     data class History(val itemId: String? = null): Intent
     data class BuyAgain(val id: String): Intent
+    data class ChangeForm(val form: FormType, val field: FormField, val value: String, val lineId: String? = null): Intent
 }
 class PilotViewModel(private val repository: PantryRepository, private val clock: DateProvider): ViewModel() {
     private val mutable = MutableStateFlow(PilotUiState(today=clock.today()))
@@ -68,6 +71,36 @@ class PilotViewModel(private val repository: PantryRepository, private val clock
     }
     fun accept(intent: Intent) {
         when(intent) {
+            is Intent.ChangeForm -> mutable.update { current ->
+                if(current.saving) current else when(intent.form) {
+                    FormType.Ingredient -> current.copy(editor=current.editor?.let { form -> when(intent.field) {
+                        FormField.Name -> form.copy(name=intent.value)
+                        FormField.Quantity -> form.copy(quantity=intent.value)
+                        FormField.Unit -> form.copy(unit=intent.value)
+                        FormField.Category -> form.copy(category=Category.valueOf(intent.value))
+                        FormField.Date -> form.copy(date=intent.value)
+                        else -> form
+                    } })
+                    FormType.Stock -> current.copy(stockAction=current.stockAction?.let { form -> when(intent.field) {
+                        FormField.Quantity -> form.copy(quantity=intent.value,error=null)
+                        FormField.Note -> form.copy(note=intent.value,error=null)
+                        FormField.Waste -> form.copy(waste=intent.value=="true",error=null)
+                        else -> form
+                    } })
+                    FormType.Receipt -> current.copy(receipt=current.receipt?.let { form -> when(intent.field) {
+                        FormField.Quantity -> form.copy(quantity=intent.value,error=null)
+                        FormField.Date -> form.copy(date=intent.value,error=null)
+                        FormField.Category -> form.copy(category=Category.valueOf(intent.value),error=null)
+                        else -> form
+                    } })
+                    FormType.Order -> current.copy(orderEditor=current.orderEditor?.let { form -> when(intent.field) {
+                        FormField.Store -> form.copy(store=intent.value,error=null)
+                        FormField.Note -> form.copy(notes=intent.value,error=null)
+                        FormField.OrderLineQuantity -> form.copy(quantities=form.quantities+(requireNotNull(intent.lineId) to intent.value),error=null)
+                        else -> form
+                    } })
+                }
+            }
             Intent.Retry -> load()
             Intent.RefreshDate -> mutable.update { it.copy(today=clock.today()) }
             is Intent.Navigate -> mutable.update { it.copy(tab=intent.tab,recipes=it.recipes.copy(selected=null)) }
@@ -135,7 +168,6 @@ class PilotViewModel(private val repository: PantryRepository, private val clock
             Intent.ExecuteConfirmation -> operation {
                 val action=state.value.settings.confirmation
                 when(action) {
-                    "demo" -> repository.demo()
                     "reset" -> repository.update { Records() }
                     "clear" -> repository.update { it.copy(shopping=it.shopping.filterNot { item -> item.isPurchased }) }
                     else -> when {
@@ -148,3 +180,4 @@ class PilotViewModel(private val repository: PantryRepository, private val clock
         }
     }
 }
+

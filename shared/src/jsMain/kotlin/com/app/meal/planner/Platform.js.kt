@@ -1,9 +1,9 @@
 package com.app.meal.planner
 
-import web.navigator.navigator
+
 
 class JsPlatform: Platform {
-    private val userAgent = navigator.userAgent
+    private val userAgent: String = js("navigator.userAgent")
     private val browserList = listOf("Chrome", "Firefox", "Safari", "Edge")
 
     override val name: String = userAgent.findAnyOf(browserList, ignoreCase = true)

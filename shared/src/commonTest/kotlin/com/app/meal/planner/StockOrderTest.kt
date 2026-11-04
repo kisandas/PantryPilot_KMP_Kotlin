@@ -16,7 +16,7 @@ class StockOrderTest {
     private fun egg(id: String="old",q: Double=2.0,date: String?="2026-11-05") = PantryItem(id,"Egg","egg",Category.Protein,q,"piece",date,1,1)
     private fun shopping(q: Double=6.0,unit: String="piece") = ShoppingItem("shopping","Eggs","egg",q,unit,createdAt=1)
     private suspend fun fixture(records: Records=Records()): Pair<PantryRepository,StockDatabase> {
-        val db=StockDatabase(records); val repo=PantryRepository(db,clock);repo.load();return repo to db
+        val db=StockDatabase(records.copy(initialDataSeeded=true)); val repo=PantryRepository(db,clock);repo.load();return repo to db
     }
     @Test fun upgradePreservesBalancesAndCreatesOpeningHistoryOnlyOnce() = runTest {
         val (repo,db)=fixture(Records(pantry=listOf(egg())))
@@ -143,6 +143,46 @@ class StockOrderTest {
         assertEquals(MovementType.Removed,repo.records.value.movements.last().type)
     }
     @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun rapidQuantityAndUnitEditsPreserveTheFullSavedValue() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val (repo,_)=fixture()
+        val model=PilotViewModel(repo,clock)
+        try {
+            runCurrent()
+            model.accept(Intent.Edit(Editor(shopping=true)))
+            model.accept(Intent.ChangeForm(FormType.Ingredient,FormField.Name,"Coffee"))
+            model.accept(Intent.ChangeForm(FormType.Ingredient,FormField.Quantity,"2"))
+            model.accept(Intent.ChangeForm(FormType.Ingredient,FormField.Quantity,"20"))
+            model.accept(Intent.ChangeForm(FormType.Ingredient,FormField.Quantity,"200"))
+            model.accept(Intent.ChangeForm(FormType.Ingredient,FormField.Unit,"g"))
+            model.accept(Intent.Save);runCurrent()
+            assertEquals("Coffee",repo.records.value.shopping.single().name)
+            assertEquals(200.0,repo.records.value.shopping.single().quantity)
+            assertEquals("g",repo.records.value.shopping.single().unit)
+        } finally {model.viewModelScope.cancel();Dispatchers.resetMain()}
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun receiptFieldEditsKeepQuantityDateAndCategoryTogether() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val (repo,_)=fixture(Records(shopping=listOf(shopping())))
+        val orderId=repo.createOrder("Store","");repo.placeOrder(orderId)
+        val lineId=repo.records.value.orders.single().lines.single().id
+        val model=PilotViewModel(repo,clock)
+        try {
+            runCurrent()
+            model.accept(Intent.Receipt(ReceiptEditor(orderId,lineId,quantity="6")))
+            model.accept(Intent.ChangeForm(FormType.Receipt,FormField.Quantity,"2"))
+            model.accept(Intent.ChangeForm(FormType.Receipt,FormField.Date,"2026-11-20"))
+            model.accept(Intent.ChangeForm(FormType.Receipt,FormField.Category,"Protein"))
+            model.accept(Intent.SaveReceipt);runCurrent()
+            val batch=repo.records.value.pantry.single()
+            assertEquals(2.0,batch.quantity)
+            assertEquals("2026-11-20",batch.expiryDate)
+            assertEquals(Category.Protein,batch.category)
+            assertEquals(OrderStatus.PartiallyReceived,repo.records.value.orders.single().status)
+        } finally {model.viewModelScope.cancel();Dispatchers.resetMain()}
+    }
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Test fun mviInvalidUsageRetainsFormAndSuccessfulUsagePublishesReducedBalance() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val (repo,_)=fixture(Records(pantry=listOf(egg())))
@@ -162,3 +202,4 @@ private class StockDatabase(records: Records): LocalDatabase {
     override suspend fun read()=decodeRows(rows)
     override suspend fun write(records: Records) {check(!fail){"Simulated disk failure"};rows=encodeRows(records)}
 }
+

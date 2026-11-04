@@ -8,37 +8,37 @@ PantryPilot is a local-first Kotlin Multiplatform household pantry, recipe, purc
 - Household purchase orders: draft, place, partial/full receipts and cancellation of outstanding quantities.
 - Pantry create, edit and confirmed deletion; category, search and expiry filters; name/expiry sorting.
 - Date-only expiry badges, dashboard summaries and use-first suggestions.
-- Twelve bundled recipes with quantities, ordered instructions and locally drawn illustrations.
+- Twelve bundled recipes with quantities, ordered instructions and bundled food photographs.
 - Recipe search, can-cook and favorites filters; persistent favorites.
 - Quantity shortfalls added atomically to a persistent shopping list, without duplicate active entries.
 - Manual shopping CRUD, purchased status and confirmed purchased-item clearing.
-- System, light and dark themes; explicit demo data loading and confirmed local reset.
-- Mobile bottom navigation including Orders, bounded desktop content, sidebar and two-column recipe cards.
+- System, light and dark themes; one-time predefined starting data and confirmed local reset.
+- Mobile bottom navigation including Orders, bounded desktop content, sidebar and responsive one-, two- or three-column recipe cards.
 
 ## Prerequisites and versions
 
-Use Android Studio's bundled JDK 21+ (this machine uses its JBR), Android SDK 37, platform tools, and an Android device/emulator (minimum API 26). Gradle wrapper is 9.5.1. iOS needs macOS, Xcode and its command-line tools; supported targets are arm64 device and Apple Silicon simulator. Browser builds use Kotlin/JS, Node and Yarn provisioned by Gradle. Initial dependency downloads require network access.
+Use JDK 21 (select it as the Gradle JDK in Android Studio), Android SDK 35, platform tools, and an Android device/emulator (minimum API 26). Gradle wrapper is 8.11. iOS needs macOS, Xcode and its command-line tools; supported targets are arm64 device, Apple Silicon simulator and Intel Mac simulator. Browser builds use Kotlin/JS, Node and Yarn provisioned by Gradle. Initial dependency downloads require network access.
 
 | Dependency | Version |
 | --- | --- |
-| Kotlin / serialization compiler plugin | 2.4.21 |
-| Compose Multiplatform | 1.12.2 |
-| Material 3 | 1.12.0-alpha03 |
-| Android Gradle Plugin | 9.1.1 |
-| AndroidX lifecycle multiplatform | 2.11.0 |
+| Kotlin / serialization compiler plugin | 2.1.20 |
+| Compose Multiplatform | 1.8.0 |
+| Material 3 | 1.8.0 |
+| Android Gradle Plugin | 8.7.2 |
+| AndroidX lifecycle multiplatform | 2.9.0-beta01 |
 | Koin core / Compose | 4.0.2 |
-| Coroutines / coroutines-test | 1.11.0 |
+| Coroutines / coroutines-test | 1.10.1 |
 | Kotlin serialization JSON | 1.8.1 |
-| kotlinx-datetime | 0.7.1 |
+| kotlinx-datetime | 0.6.2 |
 
-Existing Kotlin, Compose, SDK and wrapper versions were preserved. Koin and date APIs were checked against their official documentation and dependencies are validated by compilation. Material 3 remains the template's alpha dependency. Navigation uses explicit immutable destination state and visible back actions instead of a navigation library.
+The build uses a coordinated Xcode 16.0-compatible Kotlin/Compose stack. Android compile/target SDK is 35, minimum SDK remains 26. The legacy Android library plugin supports Kotlin 2.1.20; aliases preserve the existing test commands. The JavaScript canvas target in Compose 1.8 requires the explicit org.jetbrains.compose.experimental.jscanvas.enabled opt-in. Navigation uses explicit immutable destination state and visible back actions instead of a navigation library.
 
 ## Build and run
 
 PowerShell on Windows, from the project root:
 
 ```powershell
-$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+$env:JAVA_HOME = "$env:USERPROFILE\.gradle\jdks\azul_systems__inc_-21-amd64-windows.2"
 $env:GRADLE_USER_HOME = "$env:USERPROFILE\.gradle"
 .\gradlew.bat :androidApp:assembleDebug --no-configuration-cache
 .\gradlew.bat :androidApp:installDebug --no-configuration-cache
@@ -92,7 +92,7 @@ The repository serializes mutations with a Mutex. Each write commits the complet
 
 Expiry uses the injected user's local date: before today is expired; today through today+3 inclusive is soon. Resume and a 30-second foreground timer refresh the date. Undated items remain available. Name matching trims, lowercases, collapses whitespace and applies a small explicit alias map. Expired ingredients are excluded. Overview cards and ranking use ingredient-name presence. Recipe details, Can cook, stock shortfalls and Cook & deduct stock check exact quantities and units without conversion. Confirmed cooking deducts from earliest-expiring unexpired batches atomically; viewing never consumes stock. Ranking prefers more soon-expiring ingredients, then fewer missing ingredients, then recipe ID. Shopping merge skips an existing active normalized name + unit, preserving quantity; other units and previously purchased entries are separate.
 
-Demo loading is explicit and uses dates relative to the injected clock. It never runs merely because a list becomes empty. Repeated demo loading adds missing demo batches while preserving existing quantities and personal records. Reset removes pantry, shopping, favorites, theme, orders and stock history.
+Predefined starting data is inserted once into a fresh database. Existing installations keep their records; resets and stock depletion never reinsert starter data. New personal entries, orders and stock history persist normally. The Load demo data action has been removed. Reset removes pantry, shopping, favorites, theme, orders and history.
 
 ## Verification
 
@@ -113,5 +113,12 @@ See `document/DEMO.md` for the three-minute walkthrough and screenshot/capture i
 
 There is no authentication, cloud sync, remote recipe API, AI generation, scanner, notification, payments, full meal planning or automatic unit conversion. Future improvements: schema migrations after version 1, incremental writes, browser multi-tab conflict handling, export/import backups, native date pickers, router/history integration and a verified service worker for offline web launch. Android system Back returns through dialogs, recipe details and Home; the browser has equivalent back handling. Full deep links and forward-history restoration are future enhancements. iOS uses explicit app navigation and visible recipe back controls.
 
+
+
+
+
+## Xcode 16.0 and photographs
+
+See `document/XCODE16_MIGRATION.md` for the compatibility stack, Mac validation command and platform verification limits. Run `sh tools/verify-xcode16.sh` on your Mac with Xcode 16.0 selected. Recipe photos are committed under `shared/src/commonMain/composeResources/drawable`; source credits and license links are in `document/PHOTO_CREDITS.md`. They are loaded from the app bundle/site, with no remote image URLs in the UI.
 
 

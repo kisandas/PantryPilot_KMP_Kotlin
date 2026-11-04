@@ -2,7 +2,7 @@ package com.app.meal.planner.domain
 
 import com.app.meal.planner.core.model.*
 import kotlinx.datetime.*
-import kotlin.time.Clock
+import kotlinx.datetime.Clock
 
 interface DateProvider { fun today(): LocalDate; fun timestamp(): Long }
 class SystemDateProvider : DateProvider {
@@ -37,3 +37,4 @@ fun mergeShopping(existing: List<ShoppingItem>, additions: List<ShoppingItem>): 
     additions.forEach { item -> if (result.none { !it.isPurchased && it.normalizedName == item.normalizedName && it.unit == item.unit }) result.add(item) }
     return result
 }
+

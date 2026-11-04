@@ -16,6 +16,7 @@ data class Recipe(val id: String, val title: String, val description: String, va
     val orders: List<PurchaseOrder> = emptyList(),
     val movements: List<StockMovement> = emptyList(),
     val stockTrackingInitialized: Boolean = false,
+    val initialDataSeeded: Boolean = false,
 )
 
 @Serializable enum class OrderStatus { Draft, Placed, PartiallyReceived, Received, Cancelled }

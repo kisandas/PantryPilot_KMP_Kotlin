@@ -1,5 +1,35 @@
 # Verification results
 
+## Latest Xcode 16.0 compatibility and recipe update
+
+Verified on Windows on 4 November 2026 with JDK 21, Kotlin 2.1.20, Compose 1.8.0, AGP 8.7.2 and Gradle 8.11. This section supersedes the historical results below.
+
+| Check | Result |
+| --- | --- |
+| Android host tests | 32 passed, zero failures/errors |
+| Android connected-device tests | 33 passed, zero failures/errors on a physical Android 16 device |
+| Headless browser tests | 34 passed, zero failures/errors |
+| Final packaging | Combined regression command completed successfully; Android APK and web preview built |
+| Android startup | Updated APK installed with existing data preserved and MainActivity launched successfully |
+| Browser UI | Final bundle rendered; new shopping entry retained 200 g after refresh; three-column local-photo recipe grid verified |
+| iOS | Configured for Xcode 16.0 and iOS 18.0; compilation/runtime still require verification on a Mac |
+
+Coverage includes SQLite/IndexedDB persistence, stock/order workflows, one-time predefined data, existing-data preservation, no reseeding after reset, failed-initialization retry, and rapid quantity/unit edits retaining the full value. The browser runner emitted a Chrome shutdown warning after its tests; XML reports show zero failed tests.
+
+Current reports: `shared/build/reports/tests/testDebugUnitTest/index.html`, `shared/build/reports/tests/jsBrowserTest/index.html`, and `shared/build/outputs/androidTest-results/connected/debug/`.
+
+The regression command uses JDK 21 and Chrome:
+
+```powershell
+.\gradlew.bat :shared:testAndroidHostTest :shared:jsBrowserTest :shared:connectedAndroidDeviceTest :androidApp:assembleDebug :webApp:packageWebPreview --no-configuration-cache --max-workers=2
+```
+
+Fresh installations receive eight pantry batches and two shopping entries automatically, with no Load Data action. All twelve recipe photographs are project resources. Existing user databases are preserved. See XCODE16_MIGRATION.md for the Mac verification command and PHOTO_CREDITS.md for image sources.
+
+Screenshots: `document/recipes-photo-grid.png` and `document/saved-entry-after-refresh.png`. UI checks used localhost:8097, separate from the user's localhost:8094 storage. The legacy Compose JS canvas has limited accessibility exposure; visual interaction was used for this walkthrough. Only the tested regression cases are claimed, rather than a guarantee of every possible platform behavior.
+
+## Historical verification before the compatibility update
+
 Verified on Windows on 4 November 2026.
 
 | Check | Result |
