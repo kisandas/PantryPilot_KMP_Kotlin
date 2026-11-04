@@ -1,0 +1,3 @@
+headers = sqlite3.h
+package = sqlite
+linkerOpts = -lsqlite3
