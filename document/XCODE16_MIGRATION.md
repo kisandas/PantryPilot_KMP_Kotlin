@@ -47,6 +47,8 @@ An actual Xcode 16.0 build cannot be executed on the Windows development host. A
 
 ## Starting data and existing records
 
+If Xcode reports `gradlew: Permission denied` during PhaseScriptExecution, use the updated Compile Kotlin Framework build phase: `sh ./gradlew :shared:embedAndSignAppleFrameworkForXcode`. This does not require an executable permission bit on the wrapper copied from Windows. The Unix wrapper is stored with LF line endings. Alternatively, `chmod +x gradlew` in the project root enables direct execution on your Mac. Clean Build Folder and rebuild after updating the project.
+
 Fresh databases receive predefined pantry/shopping entries exactly once. Existing records are retained and merely gain an initialData marker. Clearing or exhausting a list does not seed it again; confirmed reset leaves it empty. Load demo data controls and the demo-loading repository method were removed. Future new entries continue to save to the same SQLite / IndexedDB stores, and order/stock transactions remain atomic.
 
 Recipe cards form a responsive grid with one column on narrow phones, two at medium widths and three on wide screens. All 12 photographs are bundled locally. PHOTO_CREDITS.md and PHOTO_CREDITS.json identify source pages, photographers and the Pexels license. Photographs show serving inspiration; the written recipe defines the ingredients and quantities.
