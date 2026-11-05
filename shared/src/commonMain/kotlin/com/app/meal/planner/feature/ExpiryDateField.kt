@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
         Text("Expiry date (optional)",style=MaterialTheme.typography.labelLarge)
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             OutlinedButton({show=true},enabled=enabled,modifier=Modifier.weight(1f)) {Text(value.ifBlank {"Choose date"})}
-            if(value.isNotBlank()) TextButton({onValue("")},enabled=enabled) {Text("Clear")}
+            if(value.isNotBlank()) OutlinedButton({onValue("")},enabled=enabled) {Text("Clear")}
         }
         if(error!=null) Text(error,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
     }

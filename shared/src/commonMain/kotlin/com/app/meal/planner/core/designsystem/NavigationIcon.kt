@@ -9,11 +9,12 @@ import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import kotlin.math.*
 
 /** Small shared vectors avoid depending on platform symbol/emoji fonts. */
-@Composable fun NavigationIcon(destination: String, color: Color = MaterialTheme.colorScheme.primary) {
-    Canvas(Modifier.size(22.dp)) {
+@Composable fun NavigationIcon(destination: String, color: Color = MaterialTheme.colorScheme.primary, iconSize: Dp = 22.dp) {
+    Canvas(Modifier.size(iconSize)) {
         scale(size.width/24f,size.height/24f,Offset.Zero) {
             val outline=Stroke(1.8f,cap=StrokeCap.Round,join=StrokeJoin.Round)
             fun line(x1: Float,y1: Float,x2: Float,y2: Float) = drawLine(color,Offset(x1,y1),Offset(x2,y2),strokeWidth=1.8f,cap=StrokeCap.Round)
@@ -22,6 +23,7 @@ import kotlin.math.*
                 drawPath(p,color,style=outline)
             }
             when(destination) {
+                "Back" -> { path(12f to 5f,5f to 12f,12f to 19f); line(5f,12f,21f,12f) }
                 "Edit" -> {
                     path(4f to 16f, 16f to 4f, 20f to 8f, 8f to 20f, 3f to 21f, 4f to 16f)
                     line(13f,7f,17f,11f)

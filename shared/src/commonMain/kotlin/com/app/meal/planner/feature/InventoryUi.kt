@@ -1,6 +1,8 @@
 package com.app.meal.planner.feature
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.graphics.Color
@@ -40,17 +42,33 @@ internal fun quantityKeyboard(unit: String) = KeyboardOptions(
 
 @Composable
 internal fun ItemEditActions(enabled: Boolean, edit: () -> Unit, delete: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilledTonalIconButton(edit, enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = "Edit item" },
-            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFDCEEFF))) {
-            NavigationIcon("Edit", Color(0xFF185A92))
+    Row {
+        CompactItemAction("Edit", Color(0xFFDCEEFF), Color(0xFF185A92), enabled, edit)
+        CompactItemAction("Delete", Color(0xFFFDE4E4), Color(0xFFA12828), enabled, delete)
+    }
+}
+
+@Composable
+private fun CompactItemAction(action: String, background: Color, tint: Color, enabled: Boolean, onClick: () -> Unit) {
+    IconButton(onClick, enabled = enabled, modifier = Modifier.size(48.dp).semantics {
+        contentDescription = "$action item"
+    }) {
+        Box(
+            Modifier.size(34.dp).clip(RoundedCornerShape(10.dp))
+                .background(if (enabled) background else MaterialTheme.colorScheme.surfaceVariant),
+            contentAlignment = Alignment.Center
+        ) {
+            NavigationIcon(action, if (enabled) tint else MaterialTheme.colorScheme.onSurfaceVariant, 18.dp)
         }
-        FilledTonalIconButton(delete, enabled = enabled,
-            modifier = Modifier.semantics { contentDescription = "Delete item" },
-            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFFDE4E4))) {
-            NavigationIcon("Delete", Color(0xFFA12828))
-        }
+    }
+}
+
+@Composable
+internal fun ScreenBackButton(label: String, onClick: () -> Unit) {
+    FilledTonalButton(onClick, modifier = Modifier.heightIn(min = 48.dp)) {
+        NavigationIcon("Back", MaterialTheme.colorScheme.onSecondaryContainer)
+        Spacer(Modifier.width(8.dp))
+        Text(label, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -117,7 +135,7 @@ fun LazyListScope.ordersContent(s: PilotUiState, checked: Set<String>, toggle: (
         item { Text("Includes all unpurchased shopping items not already linked to an order. Add or edit Shopping items first.",style=MaterialTheme.typography.bodySmall) }
         item { InventoryChoices(listOf("All","Open","Received","Cancelled"),s.orders.filter) {dispatch(Intent.OrdersFilter(s.orders.copy(filter=it)))} }
         val orders=s.records.orders.filter {when(s.orders.filter) {"Open" -> it.status in listOf(OrderStatus.Draft,OrderStatus.Placed,OrderStatus.PartiallyReceived); "Received" -> it.status==OrderStatus.Received; "Cancelled" -> it.status==OrderStatus.Cancelled;else -> true}}.sortedByDescending {it.createdAt}
-        if(orders.isEmpty()) item { Card { Column(Modifier.fillMaxWidth().padding(20.dp)) {Text("No purchase orders here yet",style=MaterialTheme.typography.titleMedium);Text("Add the things you need to Shopping, then create a draft order.");TextButton({dispatch(Intent.Navigate("Shopping"))}){Text("Open Shopping")}} } }
+        if(orders.isEmpty()) item { Card { Column(Modifier.fillMaxWidth().padding(20.dp)) {Text("No purchase orders here yet",style=MaterialTheme.typography.titleMedium);Text("Add the things you need to Shopping, then create a draft order.");FilledTonalButton({dispatch(Intent.Navigate("Shopping"))}){Text("Open Shopping")}} } }
         items(orders,key={it.id}) { order -> Card { Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Text("${order.number} · ${order.store.ifBlank {"Household purchase"}}",style=MaterialTheme.typography.titleLarge)
             Text("${statusLabel(order.status)} · ${order.lines.size} lines · ${stockTime(order.createdAt)}")
@@ -126,8 +144,8 @@ fun LazyListScope.ordersContent(s: PilotUiState, checked: Set<String>, toggle: (
         } } }
     } else {
         item {
-            OutlinedButton({dispatch(Intent.OrdersFilter(s.orders.copy(selected=null)))}) {
-                Text("Back to all orders")
+            ScreenBackButton("Back to orders") {
+                dispatch(Intent.OrdersFilter(s.orders.copy(selected=null)))
             }
         }
         val canReceive = selected.status in listOf(OrderStatus.Placed, OrderStatus.PartiallyReceived)
@@ -147,7 +165,7 @@ fun LazyListScope.ordersContent(s: PilotUiState, checked: Set<String>, toggle: (
                         dispatch(Intent.ReceiveSelected(selected.id, selectedLines.map { it.id }.toSet()))
                     }, enabled = selectedLines.isNotEmpty() && !s.saving) { Text("Receive delivery") }
                 },
-                dismissButton = { TextButton({ confirm = false }) { Text("Cancel") } }
+                dismissButton = { OutlinedButton({ confirm = false }) { Text("Cancel") } }
             )
         }
         item {Text("${selected.number} · ${selected.store.ifBlank {"Household purchase"}}",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold); Text(statusLabel(selected.status));Text("Created ${stockTime(selected.createdAt)}",style=MaterialTheme.typography.bodySmall);if(selected.notes.isNotBlank()) Text(selected.notes)}
@@ -158,7 +176,7 @@ fun LazyListScope.ordersContent(s: PilotUiState, checked: Set<String>, toggle: (
             }
             Text("Placing an order does not add pantry stock. Receive items when they arrive.",style=MaterialTheme.typography.bodySmall)
         }
-        if(selected.status in listOf(OrderStatus.Draft,OrderStatus.Placed,OrderStatus.PartiallyReceived)) item {TextButton(enabled=!s.saving,onClick={dispatch(Intent.Confirm("cancel-order:${selected.id}"))}){Text("Cancel outstanding purchase")}}
+        if(selected.status in listOf(OrderStatus.Draft,OrderStatus.Placed,OrderStatus.PartiallyReceived)) item {OutlinedButton(enabled=!s.saving,onClick={dispatch(Intent.Confirm("cancel-order:${selected.id}"))}){Text("Cancel outstanding purchase")}}
         items(selected.lines,key={it.id}) { line -> Card { Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (canReceive && line.quantity - line.receivedQuantity > STOCK_EPSILON) {
@@ -179,8 +197,8 @@ fun LazyListScope.ordersContent(s: PilotUiState, checked: Set<String>, toggle: (
 }
 
 fun LazyListScope.historyContent(s: PilotUiState,dispatch: (Intent)->Unit) {
-    item {TextButton({dispatch(Intent.Navigate("Pantry"))}){Text("‹ Pantry")};Text("Stock history",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("See what was received, used, wasted, or corrected. History survives removing a batch.")}
-    if(s.historyItemId!=null) item {TextButton({dispatch(Intent.History())}){Text("Show all stock movements")}}
+    item {ScreenBackButton("Back to pantry") {dispatch(Intent.Navigate("Pantry"))};Text("Stock history",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold);Text("See what was received, used, wasted, or corrected. History survives removing a batch.")}
+    if(s.historyItemId!=null) item {FilledTonalButton({dispatch(Intent.History())}){Text("Show all stock movements")}}
     val movements=s.records.movements.filter {s.historyItemId==null || it.pantryItemId==s.historyItemId}.asReversed().sortedByDescending {it.occurredAt}
     if(movements.isEmpty()) item {Text("No movements yet. Add stock, receive a purchase, or record usage.")}
     items(movements,key={it.id}) { MovementCard(it) }
@@ -234,7 +252,7 @@ fun LazyListScope.historyContent(s: PilotUiState,dispatch: (Intent)->Unit) {
 }
 
 @Composable private fun InventoryDialog(title: String,saving: Boolean,error: String?,cancel: ()->Unit,save: ()->Unit,content: @Composable ColumnScope.()->Unit) {
-    AlertDialog(onDismissRequest={if(!saving) cancel()},title={Text(title)},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {content();error?.let {Text(it,color=MaterialTheme.colorScheme.error)}}},confirmButton={Button(save,enabled=!saving){Text(if(saving) "Saving…" else "Save")}},dismissButton={TextButton(cancel,enabled=!saving){Text("Cancel")}})
+    AlertDialog(onDismissRequest={if(!saving) cancel()},title={Text(title)},text={Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)) {content();error?.let {Text(it,color=MaterialTheme.colorScheme.error)}}},confirmButton={Button(save,enabled=!saving){Text(if(saving) "Saving…" else "Save")}},dismissButton={OutlinedButton(cancel,enabled=!saving){Text("Cancel")}})
 }
 @Composable private fun InventoryChoices(options: List<String>,selected: String,select: (String)->Unit) {
     Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)){options.forEach {FilterChip(it==selected,{select(it)},label={Text(it)})}}

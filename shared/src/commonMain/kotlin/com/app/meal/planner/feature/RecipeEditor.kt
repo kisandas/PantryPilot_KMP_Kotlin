@@ -84,7 +84,7 @@ data class RecipeEditor(
                     if (form.visual.isNotEmpty()) RecipeArtwork(form.title, form.visual, height = 120.dp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(pickPhoto, enabled = !saving) { Text("Choose photo") }
-                        if (form.visual.isNotEmpty()) TextButton({ change("visual", "") }, enabled = !saving) {
+                        if (form.visual.isNotEmpty()) OutlinedButton({ change("visual", "") }, enabled = !saving) {
                             Text("Remove")
                         }
                     }
@@ -95,7 +95,7 @@ data class RecipeEditor(
                             OutlinedTextField(row.name,{change("ingredient:$index:name",it)},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Text),isError="ingredient:$index:name" in errors,supportingText=errors["ingredient:$index:name"]?.let { message -> { Text(message) } },label={Text("Ingredient ${index+1}")},singleLine=true,enabled=!saving,modifier=Modifier.fillMaxWidth())
                             OutlinedTextField(row.quantity,{change("ingredient:$index:quantity",it)},keyboardOptions=quantityKeyboard(row.unit),isError="ingredient:$index:quantity" in errors,supportingText=errors["ingredient:$index:quantity"]?.let { message -> { Text(message) } },label={Text("Quantity")},singleLine=true,enabled=!saving,modifier=Modifier.fillMaxWidth())
                             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) { units.forEach { unit -> FilterChip(row.unit==unit,{change("ingredient:$index:unit",unit)},label={Text(unit)},enabled=!saving) } }
-                            TextButton({change("remove",index.toString())},enabled=!saving && form.ingredients.size>1) {Text("Remove ingredient")}
+                            OutlinedButton({change("remove",index.toString())},enabled=!saving && form.ingredients.size>1) {Text("Remove ingredient")}
                         } }
                     }
                     OutlinedButton({change("add","")},enabled=!saving) {Text("Add ingredient")}
@@ -103,7 +103,7 @@ data class RecipeEditor(
                     form.error?.let {Text(it,color=MaterialTheme.colorScheme.error)}
                 }
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                    TextButton({dispatch(Intent.EditRecipe(null))},enabled=!saving) {Text("Cancel")}
+                    OutlinedButton({dispatch(Intent.EditRecipe(null))},enabled=!saving) {Text("Cancel")}
                     Button({dispatch(Intent.SaveRecipe)},enabled=!saving) {Text(if(saving) "Saving…" else "Save recipe")}
                 }
             }
