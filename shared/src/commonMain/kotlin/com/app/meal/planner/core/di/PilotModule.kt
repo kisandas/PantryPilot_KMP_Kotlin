@@ -9,6 +9,6 @@ import org.koin.dsl.module
 fun pilotModule(database: LocalDatabase) = module {
     single<LocalDatabase> { database }
     single<DateProvider> { SystemDateProvider() }
-    single { PantryRepository(get(),get()) }
-    factory { PilotViewModel(get(),get()) }
+    single { PantryRepository(get(), get()) }
+    factory { PilotViewModel(get(), get()) }
 }

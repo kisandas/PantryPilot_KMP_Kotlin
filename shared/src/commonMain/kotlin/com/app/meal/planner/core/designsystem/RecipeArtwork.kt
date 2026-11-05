@@ -17,20 +17,34 @@ import org.jetbrains.compose.resources.painterResource
 import pantrypilot.shared.generated.resources.*
 
 /** Real photographs are bundled in shared resources; rendering never fetches remote images. */
-@Composable fun RecipeArtwork(title: String,visual: String,height: Dp=160.dp) {
+@Composable
+fun RecipeArtwork(title: String, visual: String, height: Dp = 160.dp) {
     val image = remember(visual) { recipePhotoBitmap(visual) }
     if (image != null) {
-        Image(image, title, Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
+        Image(
+            image,
+            title,
+            Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp)),
+            contentScale = ContentScale.Crop
+        )
         return
     }
     val seed = visual.toIntOrNull() ?: 0
-    if(seed !in 1..12) {
-        Surface(Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp)),color=MaterialTheme.colorScheme.primaryContainer) {
-            Box(contentAlignment=Alignment.Center) {Text("Your recipe",style=MaterialTheme.typography.titleMedium)}
+    if (seed !in 1..12) {
+        Surface(
+            Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp)),
+            color = MaterialTheme.colorScheme.primaryContainer
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    "Your recipe",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
         }
         return
     }
-    val photo=when(seed) {
+    val photo = when (seed) {
         1 -> Res.drawable.recipe_01
         2 -> Res.drawable.recipe_02
         3 -> Res.drawable.recipe_03
@@ -44,6 +58,8 @@ import pantrypilot.shared.generated.resources.*
         11 -> Res.drawable.recipe_11
         else -> Res.drawable.recipe_12
     }
-    Image(painterResource(photo),contentDescription=title,contentScale=ContentScale.Crop,
-        modifier=Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp)))
+    Image(
+        painterResource(photo), contentDescription = title, contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(16.dp))
+    )
 }

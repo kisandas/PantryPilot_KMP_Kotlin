@@ -1,4 +1,5 @@
 @file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+
 package com.app.meal.planner
 
 import androidx.compose.runtime.*
@@ -40,7 +41,8 @@ internal actual fun rememberRecipePhotoPicker(onPhoto: (ByteArray?) -> Unit): ()
     val delegate = remember { RecipePhotoDelegate { callback(it) } }
     return {
         var presenter = UIApplication.sharedApplication.keyWindow?.rootViewController
-        while (presenter?.presentedViewController != null) presenter = presenter.presentedViewController
+        while (presenter?.presentedViewController != null) presenter =
+            presenter.presentedViewController
         val config = PHPickerConfiguration().apply {
             selectionLimit = 1
             filter = PHPickerFilter.imagesFilter

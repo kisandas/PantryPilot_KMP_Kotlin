@@ -21,27 +21,30 @@ internal actual fun rememberRecipePhotoPicker(onPhoto: (ByteArray?) -> Unit): ()
     val context = LocalContext.current
     val callback by rememberUpdatedState(onPhoto)
     val scope = rememberCoroutineScope()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch {
-            val bytes = withContext(Dispatchers.IO) {
-                runCatching {
-                    val resolver = context.contentResolver
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-                    var sample = 1
-                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1600) sample *= 2
-                    val options = BitmapFactory.Options().apply { inSampleSize = sample }
-                    val bitmap = resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
-                    bitmap?.let {
-                        ByteArrayOutputStream().use { output ->
-                            it.compress(Bitmap.CompressFormat.JPEG, 85, output)
-                            output.toByteArray()
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            if (uri != null) scope.launch {
+                val bytes = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val resolver = context.contentResolver
+                        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                        resolver.openInputStream(uri)
+                            ?.use { BitmapFactory.decodeStream(it, null, bounds) }
+                        var sample = 1
+                        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 1600) sample *= 2
+                        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+                        val bitmap = resolver.openInputStream(uri)
+                            ?.use { BitmapFactory.decodeStream(it, null, options) }
+                        bitmap?.let {
+                            ByteArrayOutputStream().use { output ->
+                                it.compress(Bitmap.CompressFormat.JPEG, 85, output)
+                                output.toByteArray()
+                            }
                         }
-                    }
-                }.getOrNull()
+                    }.getOrNull()
+                }
+                callback(bytes)
             }
-            callback(bytes)
         }
-    }
     return { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
 }

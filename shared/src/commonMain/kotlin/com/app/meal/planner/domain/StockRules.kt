@@ -25,23 +25,41 @@ fun orderStatus(lines: List<OrderLine>): OrderStatus = when {
     else -> OrderStatus.Placed
 }
 
-fun recipeShortages(recipe: Recipe,pantry: List<PantryItem>,today: LocalDate): List<RecipeIngredient> =
-    recipe.ingredients.groupBy {it.normalizedName to it.unit}.mapNotNull { (key,ingredients) ->
-        val stocked=pantry.filter {it.normalizedName==key.first && it.unit==key.second && it.quantity>0 && expiry(it.expiryDate,today)!=Expiry.Expired}.sumOf {it.quantity}
-        val shortage=ingredients.sumOf {it.quantity}-stocked
-        if(shortage>STOCK_EPSILON) ingredients.first().copy(quantity=shortage) else null
+fun recipeShortages(
+    recipe: Recipe,
+    pantry: List<PantryItem>,
+    today: LocalDate
+): List<RecipeIngredient> =
+    recipe.ingredients.groupBy { it.normalizedName to it.unit }.mapNotNull { (key, ingredients) ->
+        val stocked = pantry.filter {
+            it.normalizedName == key.first && it.unit == key.second && it.quantity > 0 && expiry(
+                it.expiryDate,
+                today
+            ) != Expiry.Expired
+        }.sumOf { it.quantity }
+        val shortage = ingredients.sumOf { it.quantity } - stocked
+        if (shortage > STOCK_EPSILON) ingredients.first().copy(quantity = shortage) else null
     }
 
 /** Plan all deductions first: an insufficient ingredient fails without deducting anything. */
-fun recipeDeductions(recipe: Recipe, pantry: List<PantryItem>, today: LocalDate): Map<String, Double> {
+fun recipeDeductions(
+    recipe: Recipe,
+    pantry: List<PantryItem>,
+    today: LocalDate
+): Map<String, Double> {
     val deductions = linkedMapOf<String, Double>()
     recipe.ingredients.groupBy { it.normalizedName to it.unit }.forEach { (key, ingredients) ->
         var needed = ingredients.sumOf { it.quantity }
         val batches = pantry.filter {
-            it.normalizedName == key.first && it.unit == key.second && it.quantity > 0 && expiry(it.expiryDate,today) != Expiry.Expired
-        }.sortedWith(compareBy<PantryItem> { it.expiryDate ?: "9999-12-31" }.thenBy { it.createdAt }.thenBy { it.id })
+            it.normalizedName == key.first && it.unit == key.second && it.quantity > 0 && expiry(
+                it.expiryDate,
+                today
+            ) != Expiry.Expired
+        }.sortedWith(compareBy<PantryItem> {
+            it.expiryDate ?: "9999-12-31"
+        }.thenBy { it.createdAt }.thenBy { it.id })
         batches.forEach { batch ->
-            if(needed > STOCK_EPSILON) {
+            if (needed > STOCK_EPSILON) {
                 val take = minOf(batch.quantity, needed)
                 deductions[batch.id] = take
                 needed -= take

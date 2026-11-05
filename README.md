@@ -103,11 +103,11 @@ $env:CHROME_BIN = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 .\gradlew.bat :shared:connectedAndroidDeviceTest --no-configuration-cache
 ```
 
-Tests cover expiry boundaries, aliases, expired exclusion, deterministic ranking, idempotence and incompatible units, validation, recipe validation and user CRUD, repository failed writes, MVI validation/retry/save, and real database CRUD across close/reopen. Platform verification results are recorded in `document/VERIFICATION.md`. iOS must be compiled and run on macOS before claiming it verified.
+Tests cover expiry boundaries, aliases, expired exclusion, deterministic ranking, idempotence and incompatible units, validation, recipe validation and user CRUD, repository failed writes, MVI validation/retry/save, and real database CRUD across close/reopen. iOS must be compiled and run on macOS before claiming it verified.
 
-## Demo and captures
+## Interview documents
 
-See `document/DEMO.md` for the three-minute walkthrough and screenshot/capture instructions. See `document/STOCK_AND_ORDERS.md` for usage, restocking, household purchase orders, partial receipts, migration behavior and the two-eggs example.
+The [project overview](document/PantryPilot%20Project%20Flow%20and%20Use%20Cases.docx) covers household workflows and platforms. The [interview guide](document/PantryPilot%20Project%20Interview%20Guide.docx) covers the implementation.
 
 ## Scope and future work
 
@@ -119,7 +119,7 @@ There is no authentication, cloud sync, remote recipe API, AI generation, scanne
 
 ## Xcode 16.0 and photographs
 
-See `document/XCODE16_MIGRATION.md` for the compatibility stack, Mac validation command and platform verification limits. Run `sh tools/verify-xcode16.sh` on your Mac with Xcode 16.0 selected. Recipe photos are committed under `shared/src/commonMain/composeResources/drawable`; source credits and license links are in `document/PHOTO_CREDITS.md`. They are loaded from the app bundle/site, with no remote image URLs in the UI.
+Run `sh tools/verify-xcode16.sh` on your Mac with Xcode 16.0 selected. Recipe photos are committed under `shared/src/commonMain/composeResources/drawable`; source credits and license links are in `shared/PHOTO_CREDITS.md`. They are loaded from the app bundle/site, with no remote image URLs in the UI.
 
 
 

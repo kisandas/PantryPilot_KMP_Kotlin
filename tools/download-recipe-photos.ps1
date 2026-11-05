@@ -24,7 +24,7 @@ foreach ($photo in $photos) {
     if ((Get-Item -LiteralPath $target).Length -lt 2000) { throw "Invalid image download: $($photo.Name)" }
     Write-Output "$($photo.Name): $((Get-Item -LiteralPath $target).Length) bytes"
 }
-$photos | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $projectRoot 'document/PHOTO_CREDITS.json')
+$photos | ConvertTo-Json -Depth 4 | Set-Content (Join-Path $projectRoot 'shared/PHOTO_CREDITS.json')
 
 
 
