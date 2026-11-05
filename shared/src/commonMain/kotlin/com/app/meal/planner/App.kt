@@ -6,8 +6,6 @@ import org.jetbrains.compose.resources.painterResource
 import pantrypilot.shared.generated.resources.Res
 import pantrypilot.shared.generated.resources.pantry_logo
 import androidx.compose.foundation.*
-import com.app.meal.planner.feature.FormKeyboardScope
-import com.app.meal.planner.feature.FormTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.draw.clip
@@ -439,7 +437,7 @@ private fun PilotApp(vm: PilotViewModel) {
                                                 )
                                                 }
                                                 item {
-                                                    FormTextField(
+                                                    OutlinedTextField(
                                                         s.pantry.search,
                                                         {
                                                             vm.accept(
@@ -733,7 +731,7 @@ private fun PilotApp(vm: PilotViewModel) {
                                                     ) { Text("+ Create recipe") }
                                                     }
                                                     item {
-                                                        FormTextField(
+                                                        OutlinedTextField(
                                                             s.recipes.search,
                                                             {
                                                                 vm.accept(
@@ -1258,51 +1256,49 @@ private fun EditorDialog(
         onDismissRequest = { if (!saving) cancel() },
         title = { Text(if (e.restockId != null) "Restock ${e.name}" else "${if (e.id == null) "Add" else "Edit"} ${if (e.shopping) "shopping item" else "ingredient"}") },
         text = {
-            FormKeyboardScope {
-                Column(
-                    Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    if (e.restockId == null) FormTextField(
-                        e.name,
-                        { change(FormField.Name, it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                        label = { Text("Name") },
-                        singleLine = true,
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (e.restockId == null) OutlinedTextField(
+                    e.name,
+                    { change(FormField.Name, it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                    label = { Text("Name") },
+                    singleLine = true,
+                    enabled = !saving,
+                    isError = "name" in e.errors,
+                    supportingText = { e.errors["name"]?.let { Text(it) } })
+                OutlinedTextField(
+                    e.quantity,
+                    { change(FormField.Quantity, it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = quantityKeyboard(e.unit),
+                    label = { Text("Quantity") },
+                    singleLine = true,
+                    enabled = !saving,
+                    isError = "quantity" in e.errors,
+                    supportingText = { e.errors["quantity"]?.let { Text(it) } })
+                Text("Unit"); if (e.id != null && !e.shopping) Text("${e.unit} · fixed for this stock batch") else ChoiceRow(
+                e.restockUnit?.let(::compatibleStockUnits) ?: units,
+                e.unit
+            ) { if (!saving) change(FormField.Unit, it) }
+                if (!e.shopping && e.id != null) Text(
+                    "Editing quantity records a stock count correction. Use stock records consumption; a new purchase should be received as a new batch.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (!e.shopping) {
+                    if (e.restockId == null) {
+                        Text("Category"); ChoiceRow(
+                            Category.entries.map { it.name },
+                            e.category.name
+                        ) { if (!saving) change(FormField.Category, it) }
+                    }; ExpiryDateField(
+                        e.date,
                         enabled = !saving,
-                        isError = "name" in e.errors,
-                        supportingText = { e.errors["name"]?.let { Text(it) } })
-                    FormTextField(
-                        e.quantity,
-                        { change(FormField.Quantity, it) },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = quantityKeyboard(e.unit),
-                        label = { Text("Quantity") },
-                        singleLine = true,
-                        enabled = !saving,
-                        isError = "quantity" in e.errors,
-                        supportingText = { e.errors["quantity"]?.let { Text(it) } })
-                    Text("Unit"); if (e.id != null && !e.shopping) Text("${e.unit} · fixed for this stock batch") else ChoiceRow(
-                    e.restockUnit?.let(::compatibleStockUnits) ?: units,
-                    e.unit
-                ) { if (!saving) change(FormField.Unit, it) }
-                    if (!e.shopping && e.id != null) Text(
-                        "Editing quantity records a stock count correction. Use stock records consumption; a new purchase should be received as a new batch.",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (!e.shopping) {
-                        if (e.restockId == null) {
-                            Text("Category"); ChoiceRow(
-                                Category.entries.map { it.name },
-                                e.category.name
-                            ) { if (!saving) change(FormField.Category, it) }
-                        }; ExpiryDateField(
-                            e.date,
-                            enabled = !saving,
-                            error = e.errors["date"]
-                        ) { change(FormField.Date, it) }
-                    }
+                        error = e.errors["date"]
+                    ) { change(FormField.Date, it) }
                 }
             }
         },

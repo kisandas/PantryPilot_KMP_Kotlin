@@ -546,7 +546,7 @@ fun InventoryDialogs(s: PilotUiState, dispatch: (Intent) -> Unit) {
                     )
                 )
             }
-            FormTextField(
+            OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = form.quantity,
                 onValueChange = {
@@ -562,7 +562,7 @@ fun InventoryDialogs(s: PilotUiState, dispatch: (Intent) -> Unit) {
                 label = { Text("Quantity to subtract (${item?.unit ?: ""})") },
                 singleLine = true
             )
-            FormTextField(
+            OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = form.note,
                 onValueChange = { dispatch(Intent.ChangeForm(FormType.Stock, FormField.Note, it)) },
@@ -589,7 +589,7 @@ fun InventoryDialogs(s: PilotUiState, dispatch: (Intent) -> Unit) {
                 "A new batch will be added. Older stock and expiry dates stay separate.",
                 style = MaterialTheme.typography.bodySmall
             )
-            FormTextField(
+            OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = form.quantity,
                 onValueChange = {
@@ -635,7 +635,7 @@ fun InventoryDialogs(s: PilotUiState, dispatch: (Intent) -> Unit) {
             form.error,
             { dispatch(Intent.OrderEdit(null)) },
             { dispatch(Intent.SaveOrder) }) {
-            FormTextField(
+            OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = form.store,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
@@ -652,7 +652,7 @@ fun InventoryDialogs(s: PilotUiState, dispatch: (Intent) -> Unit) {
                 label = { Text("Store / supplier (optional)") },
                 singleLine = true
             )
-            FormTextField(
+            OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = form.notes,
                 onValueChange = { dispatch(Intent.ChangeForm(FormType.Order, FormField.Note, it)) },
@@ -663,7 +663,7 @@ fun InventoryDialogs(s: PilotUiState, dispatch: (Intent) -> Unit) {
                 s.records.shopping.filter { !it.isPurchased && it.orderId == null }
                     .forEach { Text("• ${it.name} · ${stockNumber(it.quantity)} ${it.unit}") }
             } else form.order.lines.forEach { line ->
-                FormTextField(
+                OutlinedTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = form.quantities[line.id] ?: "",
                     keyboardOptions = quantityKeyboard(line.unit),
@@ -699,12 +699,10 @@ private fun InventoryDialog(
         onDismissRequest = { if (!saving) cancel() },
         title = { Text(title) },
         text = {
-            FormKeyboardScope {
-                Column(
-                    Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) { content(); error?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
-            }
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) { content(); error?.let { Text(it, color = MaterialTheme.colorScheme.error) } }
         },
         confirmButton = {
             Button(

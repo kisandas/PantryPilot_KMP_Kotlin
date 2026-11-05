@@ -135,194 +135,192 @@ fun RecipeEditorDialog(form: RecipeEditor, saving: Boolean, dispatch: (Intent) -
         if (!saving) dispatch(Intent.RecipeField(field, value))
     }
     Dialog(onDismissRequest = { if (!saving) dispatch(Intent.EditRecipe(null)) }) {
-        FormKeyboardScope {
-            Surface(shape = MaterialTheme.shapes.extraLarge) {
+        Surface(shape = MaterialTheme.shapes.extraLarge) {
+            Column(
+                Modifier.widthIn(max = 600.dp).fillMaxWidth().heightIn(max = 700.dp).imePadding()
+                    .padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    if (form.id == null) "Create recipe" else "Edit recipe",
+                    style = MaterialTheme.typography.headlineSmall
+                )
                 Column(
-                    Modifier.widthIn(max = 600.dp).fillMaxWidth().heightIn(max = 700.dp).imePadding()
-                        .padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)
+                    Modifier.weight(1f, false).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        if (form.id == null) "Create recipe" else "Edit recipe",
-                        style = MaterialTheme.typography.headlineSmall
+                    OutlinedTextField(
+                        form.title,
+                        { change("title", it) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        isError = "title" in errors,
+                        supportingText = errors["title"]?.let { message -> { Text(message) } },
+                        label = { Text("Recipe title") },
+                        singleLine = true,
+                        enabled = !saving,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    Column(
-                        Modifier.weight(1f, false).verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    OutlinedTextField(
+                        form.description,
+                        { change("description", it) },
+                        label = { Text("Description") },
+                        enabled = !saving,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        FormTextField(
-                            form.title,
-                            { change("title", it) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                            isError = "title" in errors,
-                            supportingText = errors["title"]?.let { message -> { Text(message) } },
-                            label = { Text("Recipe title") },
+                        listOf(
+                            "Breakfast",
+                            "Lunch",
+                            "Dinner",
+                            "Snack"
+                        ).forEach {
+                            FilterChip(
+                                form.category == it,
+                                { change("category", it) },
+                                label = { Text(it) },
+                                enabled = !saving
+                            )
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            form.minutes,
+                            { change("minutes", it) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            isError = "minutes" in errors,
+                            supportingText = errors["minutes"]?.let { message -> { Text(message) } },
+                            label = { Text("Minutes") },
                             singleLine = true,
                             enabled = !saving,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.weight(1f)
                         )
-                        FormTextField(
-                            form.description,
-                            { change("description", it) },
-                            label = { Text("Description") },
+                        OutlinedTextField(
+                            form.servings,
+                            { change("servings", it) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            isError = "servings" in errors,
+                            supportingText = errors["servings"]?.let { message -> { Text(message) } },
+                            label = { Text("Servings") },
+                            singleLine = true,
                             enabled = !saving,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.weight(1f)
                         )
-                        Row(
-                            Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    }
+                    Text("Photo (optional)", style = MaterialTheme.typography.titleMedium)
+                    var photoError by remember { mutableStateOf(false) }
+                    val pickPhoto = rememberRecipePhotoPicker { bytes ->
+                        val photo = bytes?.let(::encodeRecipePhoto)
+                        photoError = photo == null
+                        if (photo != null) change("visual", photo)
+                    }
+                    if (form.visual.isNotEmpty()) RecipeArtwork(
+                        form.title,
+                        form.visual,
+                        height = 120.dp
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(pickPhoto, enabled = !saving) { Text("Choose photo") }
+                        if (form.visual.isNotEmpty()) OutlinedButton(
+                            { change("visual", "") },
+                            enabled = !saving
                         ) {
-                            listOf(
-                                "Breakfast",
-                                "Lunch",
-                                "Dinner",
-                                "Snack"
-                            ).forEach {
-                                FilterChip(
-                                    form.category == it,
-                                    { change("category", it) },
-                                    label = { Text(it) },
-                                    enabled = !saving
-                                )
-                            }
+                            Text("Remove")
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            FormTextField(
-                                form.minutes,
-                                { change("minutes", it) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                isError = "minutes" in errors,
-                                supportingText = errors["minutes"]?.let { message -> { Text(message) } },
-                                label = { Text("Minutes") },
-                                singleLine = true,
-                                enabled = !saving,
-                                modifier = Modifier.weight(1f)
-                            )
-                            FormTextField(
-                                form.servings,
-                                { change("servings", it) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                isError = "servings" in errors,
-                                supportingText = errors["servings"]?.let { message -> { Text(message) } },
-                                label = { Text("Servings") },
-                                singleLine = true,
-                                enabled = !saving,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        Text("Photo (optional)", style = MaterialTheme.typography.titleMedium)
-                        var photoError by remember { mutableStateOf(false) }
-                        val pickPhoto = rememberRecipePhotoPicker { bytes ->
-                            val photo = bytes?.let(::encodeRecipePhoto)
-                            photoError = photo == null
-                            if (photo != null) change("visual", photo)
-                        }
-                        if (form.visual.isNotEmpty()) RecipeArtwork(
-                            form.title,
-                            form.visual,
-                            height = 120.dp
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(pickPhoto, enabled = !saving) { Text("Choose photo") }
-                            if (form.visual.isNotEmpty()) OutlinedButton(
-                                { change("visual", "") },
-                                enabled = !saving
+                    }
+                    if (photoError) Text(
+                        "Choose a supported image under 2 MB.",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Text("Ingredients", style = MaterialTheme.typography.titleMedium)
+                    form.ingredients.forEachIndexed { index, row ->
+                        OutlinedCard {
+                            Column(
+                                Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Remove")
-                            }
-                        }
-                        if (photoError) Text(
-                            "Choose a supported image under 2 MB.",
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text("Ingredients", style = MaterialTheme.typography.titleMedium)
-                        form.ingredients.forEachIndexed { index, row ->
-                            OutlinedCard {
-                                Column(
-                                    Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    FormTextField(
-                                        row.name,
-                                        { change("ingredient:$index:name", it) },
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                                        isError = "ingredient:$index:name" in errors,
-                                        supportingText = errors["ingredient:$index:name"]?.let { message ->
-                                            {
-                                                Text(message)
-                                            }
-                                        },
-                                        label = { Text("Ingredient ${index + 1}") },
-                                        singleLine = true,
-                                        enabled = !saving,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    FormTextField(
-                                        row.quantity,
-                                        { change("ingredient:$index:quantity", it) },
-                                        keyboardOptions = quantityKeyboard(row.unit),
-                                        isError = "ingredient:$index:quantity" in errors,
-                                        supportingText = errors["ingredient:$index:quantity"]?.let { message ->
-                                            {
-                                                Text(message)
-                                            }
-                                        },
-                                        label = { Text("Quantity") },
-                                        singleLine = true,
-                                        enabled = !saving,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                    Row(
-                                        Modifier.horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        units.forEach { unit ->
-                                            FilterChip(
-                                                row.unit == unit,
-                                                { change("ingredient:$index:unit", unit) },
-                                                label = { Text(unit) },
-                                                enabled = !saving
-                                            )
+                                OutlinedTextField(
+                                    row.name,
+                                    { change("ingredient:$index:name", it) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                                    isError = "ingredient:$index:name" in errors,
+                                    supportingText = errors["ingredient:$index:name"]?.let { message ->
+                                        {
+                                            Text(message)
                                         }
+                                    },
+                                    label = { Text("Ingredient ${index + 1}") },
+                                    singleLine = true,
+                                    enabled = !saving,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                    row.quantity,
+                                    { change("ingredient:$index:quantity", it) },
+                                    keyboardOptions = quantityKeyboard(row.unit),
+                                    isError = "ingredient:$index:quantity" in errors,
+                                    supportingText = errors["ingredient:$index:quantity"]?.let { message ->
+                                        {
+                                            Text(message)
+                                        }
+                                    },
+                                    label = { Text("Quantity") },
+                                    singleLine = true,
+                                    enabled = !saving,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Row(
+                                    Modifier.horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    units.forEach { unit ->
+                                        FilterChip(
+                                            row.unit == unit,
+                                            { change("ingredient:$index:unit", unit) },
+                                            label = { Text(unit) },
+                                            enabled = !saving
+                                        )
                                     }
-                                    OutlinedButton(
-                                        { change("remove", index.toString()) },
-                                        enabled = !saving && form.ingredients.size > 1
-                                    ) { Text("Remove ingredient") }
                                 }
+                                OutlinedButton(
+                                    { change("remove", index.toString()) },
+                                    enabled = !saving && form.ingredients.size > 1
+                                ) { Text("Remove ingredient") }
                             }
                         }
-                        OutlinedButton(
-                            { change("add", "") },
-                            enabled = !saving
-                        ) { Text("Add ingredient") }
-                        FormTextField(
-                            form.instructions,
-                            { change("instructions", it) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
-                            isError = "instructions" in errors,
-                            label = { Text("Instructions") },
-                            supportingText = {
-                                Text(
-                                    errors["instructions"] ?: "Enter one step per line."
-                                )
-                            },
-                            minLines = 3,
-                            enabled = !saving,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        form.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     }
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        OutlinedButton({ dispatch(Intent.EditRecipe(null)) }, enabled = !saving) {
+                    OutlinedButton(
+                        { change("add", "") },
+                        enabled = !saving
+                    ) { Text("Add ingredient") }
+                    OutlinedTextField(
+                        form.instructions,
+                        { change("instructions", it) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+                        isError = "instructions" in errors,
+                        label = { Text("Instructions") },
+                        supportingText = {
                             Text(
-                                "Cancel"
+                                errors["instructions"] ?: "Enter one step per line."
                             )
-                        }
-                        Button(
-                            { dispatch(Intent.SaveRecipe) },
-                            enabled = !saving
-                        ) { Text(if (saving) "Saving…" else "Save recipe") }
+                        },
+                        minLines = 3,
+                        enabled = !saving,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    form.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    OutlinedButton({ dispatch(Intent.EditRecipe(null)) }, enabled = !saving) {
+                        Text(
+                            "Cancel"
+                        )
                     }
+                    Button(
+                        { dispatch(Intent.SaveRecipe) },
+                        enabled = !saving
+                    ) { Text(if (saving) "Saving…" else "Save recipe") }
                 }
             }
         }
