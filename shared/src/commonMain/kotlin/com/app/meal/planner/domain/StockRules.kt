@@ -7,6 +7,18 @@ const val STOCK_EPSILON = 0.000000001
 fun validStockQuantity(quantity: Double, unit: String): Boolean =
     quantity.isFinite() && quantity > 0 && unit in units && (unit != "piece" || quantity % 1.0 == 0.0)
 
+fun compatibleStockUnits(unit: String): List<String> = when (unit) {
+    "g", "kg" -> listOf("g", "kg")
+    "ml", "L" -> listOf("ml", "L")
+    else -> listOf(unit)
+}
+
+fun convertStockQuantity(quantity: Double, from: String, to: String): Double {
+    require(to in compatibleStockUnits(from)) { "Choose a compatible stock unit." }
+    if (from == to) return quantity
+    return if (from == "g" || from == "ml") quantity / 1000 else quantity * 1000
+}
+
 fun orderStatus(lines: List<OrderLine>): OrderStatus = when {
     lines.all { it.receivedQuantity >= it.quantity - STOCK_EPSILON } -> OrderStatus.Received
     lines.any { it.receivedQuantity > 0 } -> OrderStatus.PartiallyReceived

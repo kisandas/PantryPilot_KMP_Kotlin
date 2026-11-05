@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.PantryPilot" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowSplashScreenBackground">#FAF8F0</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/pantry_splash_logo</item>
+        <item name="android:windowBackground">#FAF8F0</item>
+    </style>
+</resources>

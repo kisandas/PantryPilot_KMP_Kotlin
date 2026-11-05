@@ -14,11 +14,12 @@ class DatabasePersistenceTest {
         try {
             val pantry=PantryItem("integration-pantry","Persistence tomato","persistence tomato",Category.Vegetables,2.0,"piece",null,1,1)
             val shopping=ShoppingItem("integration-shop","Persistence rice","persistence rice",100.0,"g",false,1)
-            db.write(Records(listOf(pantry),listOf(shopping),setOf("01"),"Dark"));db.close()
+            db.write(Records(listOf(pantry),listOf(shopping),setOf("01"),"Dark",recipes=listOf(Recipe("user","My recipe","Personal","Lunch",10,1,listOf(RecipeIngredient("Egg",1.0,"piece")),listOf("Cook thoroughly"),""))));db.close()
             val reopened=createDatabase()
             try {
                 assertEquals("Persistence tomato",reopened.read().pantry.single().name)
                 assertEquals("Dark",reopened.read().theme)
+                assertEquals("My recipe",reopened.read().recipes.single().title)
                 assertEquals(setOf("01"),reopened.read().favorites)
                 val repository=PantryRepository(reopened,SystemDateProvider());repository.load()
                 repository.update { it.copy(pantry=it.pantry.map { p -> p.copy(quantity=3.0) },shopping=it.shopping.map { item -> item.copy(isPurchased=true) }) }

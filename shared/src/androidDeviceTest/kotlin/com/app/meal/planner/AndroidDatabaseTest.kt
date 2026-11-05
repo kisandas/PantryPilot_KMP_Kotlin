@@ -18,10 +18,10 @@ class AndroidDatabaseTest {
         try {
             val p=PantryItem("integration","Tomato","tomato",Category.Vegetables,2.0,"piece",null,1,1)
             val item=ShoppingItem("integration","Rice","rice",100.0,"g",false,1)
-            db.write(Records(listOf(p),listOf(item),setOf("01"),"Dark"));db.close()
+            db.write(Records(listOf(p),listOf(item),setOf("01"),"Dark",recipes=listOf(Recipe("user","My recipe","Personal","Lunch",10,1,listOf(RecipeIngredient("Egg",1.0,"piece")),listOf("Cook thoroughly"),""))));db.close()
             val reopened=AndroidDatabase(context)
             try {
-                val loaded=reopened.read();assertEquals("Tomato",loaded.pantry.single().name);assertEquals("Dark",loaded.theme);assertTrue("01" in loaded.favorites)
+                val loaded=reopened.read();assertEquals("My recipe",loaded.recipes.single().title);assertEquals("Tomato",loaded.pantry.single().name);assertEquals("Dark",loaded.theme);assertTrue("01" in loaded.favorites)
                 reopened.write(loaded.copy(pantry=listOf(p.copy(quantity=4.0)),shopping=listOf(item.copy(isPurchased=true))));reopened.close()
                 val next=AndroidDatabase(context)
                 try { assertEquals(4.0,next.read().pantry.single().quantity,0.0);assertTrue(next.read().shopping.single().isPurchased);next.write(Records());assertTrue(next.read().pantry.isEmpty());assertTrue(next.read().shopping.isEmpty()) }

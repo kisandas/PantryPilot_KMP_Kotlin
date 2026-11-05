@@ -8,11 +8,11 @@ PantryPilot is a local-first Kotlin Multiplatform household pantry, recipe, purc
 - Household purchase orders: draft, place, partial/full receipts and cancellation of outstanding quantities.
 - Pantry create, edit and confirmed deletion; category, search and expiry filters; name/expiry sorting.
 - Date-only expiry badges, dashboard summaries and use-first suggestions.
-- Twelve bundled recipes with quantities, ordered instructions and bundled food photographs.
+- User-created recipes with create/edit/delete, quantities, ordered instructions and optional bundled food photographs.
 - Recipe search, can-cook and favorites filters; persistent favorites.
 - Quantity shortfalls added atomically to a persistent shopping list, without duplicate active entries.
 - Manual shopping CRUD, purchased status and confirmed purchased-item clearing.
-- System, light and dark themes; one-time predefined starting data and confirmed local reset.
+- System, light and dark themes; empty first launch and confirmed local reset.
 - Mobile bottom navigation including Orders, bounded desktop content, sidebar and responsive one-, two- or three-column recipe cards.
 
 ## Prerequisites and versions
@@ -86,13 +86,13 @@ A composition-scoped Koin application owns one database, repository and date pro
 
 A shared database API and common serializable models provide consistent behavior. SQLite is native on Android and iOS. Browsers do not offer the same SQLite API, so IndexedDB is used behind the same interface rather than relying on unverified SQLite Wasm drivers. This is a real database on each platform, not preferences, localStorage or an in-memory persistence substitute.
 
-SQLite schema version 1: `records(kind TEXT, id TEXT, payload TEXT, PRIMARY KEY(kind,id))`. Android uses application-private `pantry-pilot.db`; iOS uses its Documents directory and system sqlite3 through a declared cinterop. Each pantry and shopping item is a separate database row; favorite IDs, theme, purchase orders, stock movements and the stock-tracking migration marker are separate rows. A common RecordCodec maps every platform to the same row format. Existing balances gain opening-history entries exactly once during upgrade without resetting data. Payloads use Kotlin serialization. Browser database `PantryPilot`, version 1, uses the `records` object store keyed by `kind:id` with equivalent per-record fields. Recipe content is bundled read-only Kotlin data, outside the database.
+SQLite schema version 1: `records(kind TEXT, id TEXT, payload TEXT, PRIMARY KEY(kind,id))`. Android uses application-private `pantry-pilot.db`; iOS uses its Documents directory and system sqlite3 through a declared cinterop. Each pantry and shopping item is a separate database row; favorite IDs, theme, purchase orders, stock movements and the stock-tracking migration marker are separate rows. A common RecordCodec maps every platform to the same row format. Existing balances gain opening-history entries exactly once during upgrade without resetting data. Payloads use Kotlin serialization. Browser database `PantryPilot`, version 1, uses the `records` object store keyed by `kind:id` with equivalent per-record fields. User recipe content is persisted as recipe rows through the same codec.
 
 The repository serializes mutations with a Mutex. Each write commits the complete small local dataset in one SQLite transaction / IndexedDB readwrite transaction. UI state changes only after successful commit. Multi-ingredient additions are atomic. This deliberately favors correctness and simplicity for household-sized lists over incremental SQL queries. Browser write completion waits for transaction completion, not just individual request success. Reopen tests cover insert, update, purchased status, delete, favorites and theme. The database is not encrypted. Multi-tab simultaneous editing is not synchronized and may overwrite another tab's snapshot; use one active tab. Future work should add revision checks and incremental transactions before multi-tab collaboration.
 
 Expiry uses the injected user's local date: before today is expired; today through today+3 inclusive is soon. Resume and a 30-second foreground timer refresh the date. Undated items remain available. Name matching trims, lowercases, collapses whitespace and applies a small explicit alias map. Expired ingredients are excluded. Overview cards and ranking use ingredient-name presence. Recipe details, Can cook, stock shortfalls and Cook & deduct stock check exact quantities and units without conversion. Confirmed cooking deducts from earliest-expiring unexpired batches atomically; viewing never consumes stock. Ranking prefers more soon-expiring ingredients, then fewer missing ingredients, then recipe ID. Shopping merge skips an existing active normalized name + unit, preserving quantity; other units and previously purchased entries are separate.
 
-Predefined starting data is inserted once into a fresh database. Existing installations keep their records; resets and stock depletion never reinsert starter data. New personal entries, orders and stock history persist normally. The Load demo data action has been removed. Reset removes pantry, shopping, favorites, theme, orders and history.
+A fresh database starts empty. Existing installations retain their saved records. New personal entries, orders and stock history persist normally. The Load demo data action has been removed. Reset removes pantry, shopping, favorites, theme, orders and history.
 
 ## Verification
 
@@ -103,7 +103,7 @@ $env:CHROME_BIN = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
 .\gradlew.bat :shared:connectedAndroidDeviceTest --no-configuration-cache
 ```
 
-Tests cover expiry boundaries, aliases, expired exclusion, deterministic ranking, idempotence and incompatible units, validation, recipe completeness, repository failed writes, MVI validation/retry/save, and real database CRUD across close/reopen. Platform verification results are recorded in `document/VERIFICATION.md`. iOS must be compiled and run on macOS before claiming it verified.
+Tests cover expiry boundaries, aliases, expired exclusion, deterministic ranking, idempotence and incompatible units, validation, recipe validation and user CRUD, repository failed writes, MVI validation/retry/save, and real database CRUD across close/reopen. Platform verification results are recorded in `document/VERIFICATION.md`. iOS must be compiled and run on macOS before claiming it verified.
 
 ## Demo and captures
 
@@ -111,7 +111,7 @@ See `document/DEMO.md` for the three-minute walkthrough and screenshot/capture i
 
 ## Scope and future work
 
-There is no authentication, cloud sync, remote recipe API, AI generation, scanner, notification, payments, full meal planning or automatic unit conversion. Future improvements: schema migrations after version 1, incremental writes, browser multi-tab conflict handling, export/import backups, native date pickers, router/history integration and a verified service worker for offline web launch. Android system Back returns through dialogs, recipe details and Home; the browser has equivalent back handling. Full deep links and forward-history restoration are future enhancements. iOS uses explicit app navigation and visible recipe back controls.
+There is no authentication, cloud sync, remote recipe API, AI generation, scanner, notification, payments, full meal planning or automatic unit conversion. Future improvements: schema migrations after version 1, incremental writes, browser multi-tab conflict handling, export/import backups, router/history integration and a verified service worker for offline web launch. Android system Back returns through dialogs, recipe details and Home; the browser has equivalent back handling. Full deep links and forward-history restoration are future enhancements. iOS uses explicit app navigation and visible recipe back controls.
 
 
 
@@ -122,3 +122,9 @@ There is no authentication, cloud sync, remote recipe API, AI generation, scanne
 See `document/XCODE16_MIGRATION.md` for the compatibility stack, Mac validation command and platform verification limits. Run `sh tools/verify-xcode16.sh` on your Mac with Xcode 16.0 selected. Recipe photos are committed under `shared/src/commonMain/composeResources/drawable`; source credits and license links are in `document/PHOTO_CREDITS.md`. They are loaded from the app bundle/site, with no remote image URLs in the UI.
 
 
+
+## User recipes and form updates
+
+Recipes start empty and are created, edited and deleted by the user. Their ingredients, instructions and selected local photo persist in SQLite/IndexedDB through the common row codec. Deleting a recipe also removes its favorite marker and preserves stock history. Cooking and shopping-shortfall actions use saved recipes. The old catalog now exists only as test fixtures. Pantry and shopping also start empty on fresh installations.
+
+Favorite controls are filled/outlined hearts with snackbar feedback. Empty states do not duplicate the screen add button. Scaffold handles system insets once; compact header/list spacing removes extra blank margins. Expiry entry uses Android DatePickerDialog, iOS UIDatePicker and browser-native date input, including receipt forms. Android disables app autofill integration without changing system-wide keyboard preferences.

@@ -15,8 +15,7 @@ class PantryRepository(private val database: LocalDatabase, private val clock: D
     val records = mutable.asStateFlow()
     suspend fun load() = mutex.withLock {
         val stored = database.read()
-        val fresh = !stored.stockTrackingInitialized && stored.pantry.isEmpty() && stored.shopping.isEmpty() && stored.orders.isEmpty() && stored.movements.isEmpty() && stored.favorites.isEmpty() && stored.theme=="System"
-        val loaded = if(!stored.initialDataSeeded && fresh) predefinedRecords(clock) else stored.copy(initialDataSeeded=true)
+        val loaded = stored
         val migrated = if(loaded.stockTrackingInitialized) loaded else loaded.copy(
             stockTrackingInitialized = true,
             movements = loaded.movements + loaded.pantry.map { p ->
@@ -27,11 +26,21 @@ class PantryRepository(private val database: LocalDatabase, private val clock: D
         mutable.value = migrated
     }
     suspend fun update(transform: (Records) -> Records) = mutex.withLock {
-        val next = transform(mutable.value).copy(stockTrackingInitialized=true,initialDataSeeded=true)
+        val next = transform(mutable.value).copy(stockTrackingInitialized=true)
         database.write(next)
         mutable.value = next
     }
     fun id() = "${clock.timestamp()}-${Random.nextInt().toUInt()}"
+    suspend fun saveRecipe(recipe: Recipe) = update { r ->
+        require(recipe.title.isNotBlank()) { "Enter a recipe title." }
+        require(recipe.preparationMinutes in 1..1440 && recipe.servings in 1..100) { "Enter a preparation time from 1–1440 minutes and 1–100 servings." }
+        require(recipe.ingredients.isNotEmpty() && recipe.ingredients.all { it.displayName.isNotBlank() && it.unit in units && validStockQuantity(it.quantity,it.unit) }) { "Add ingredients with valid quantities and units." }
+        require(recipe.instructions.isNotEmpty() && recipe.instructions.all { it.isNotBlank() }) { "Add at least one instruction." }
+        r.copy(recipes=r.recipes.filterNot {it.id==recipe.id}+recipe)
+    }
+    suspend fun deleteRecipe(recipeId: String) = update { r ->
+        r.copy(recipes=r.recipes.filterNot {it.id==recipeId},favorites=r.favorites-recipeId)
+    }
     private fun movement(item: PantryItem, type: MovementType, delta: Double, balance: Double, note: String, orderId: String? = null) =
         StockMovement(id(),item.id,item.name,item.unit,type,delta,balance,clock.timestamp(),note,orderId,item.expiryDate)
 
@@ -43,6 +52,21 @@ class PantryRepository(private val database: LocalDatabase, private val clock: D
         r.copy(pantry=r.pantry.filterNot { it.id==item.id }+item,
             movements=if(old==null || delta!=0.0) r.movements + movement(item,if(old==null) MovementType.Opening else MovementType.Adjustment,delta,item.quantity,if(old==null) "Added stock batch" else "Manual stock count correction") else r.movements)
     }
+    suspend fun restock(batchId: String, quantity: Double, unit: String, date: String?) = update { records ->
+        val original = records.pantry.firstOrNull { it.id == batchId }
+            ?: error("Stock batch no longer exists.")
+        require(validStockQuantity(quantity, unit)) { "Enter a positive quantity in a compatible unit." }
+        val converted = convertStockQuantity(quantity, unit, original.unit)
+        require(validStockQuantity(converted, original.unit)) { "Quantity is outside the supported range." }
+        val timestamp = clock.timestamp()
+        val batch = original.copy(id = id(), quantity = converted, expiryDate = date,
+            createdAt = timestamp, updatedAt = timestamp)
+        records.copy(
+            pantry = records.pantry + batch,
+            movements = records.movements + movement(batch, MovementType.Purchase, converted, converted, "Restocked")
+        )
+    }
+
     suspend fun saveShopping(item: ShoppingItem) = update { r ->
         require(item.name.isNotBlank() && validStockQuantity(item.quantity,item.unit)) { "Enter a positive quantity; pieces must be whole numbers." }
         require(r.shopping.find { it.id==item.id }?.orderId == null) { "This item is linked to an order. Manage it from Orders." }
@@ -130,6 +154,15 @@ class PantryRepository(private val database: LocalDatabase, private val clock: D
             movements=r.movements+movement(batch,MovementType.Purchase,received,received,"Received ${order.number}${if(order.store.isBlank()) "" else " · ${order.store}"}",orderId))
     }
     suspend fun receiveOrderLine(orderId: String,lineId: String,quantity: Double,date: String?,category: Category) = update { receipt(it,orderId,lineId,quantity,date,category) }
+    suspend fun receiveOutstanding(orderId: String, lineIds: Set<String>) = update { records ->
+        require(lineIds.isNotEmpty()) { "Select at least one item." }
+        val order = records.orders.first { it.id == orderId }
+        val lines = order.lines.filter { it.id in lineIds }
+        require(lines.size == lineIds.size) { "Some selected items are no longer in this order." }
+        lines.fold(records) { current, line ->
+            receipt(current, orderId, line.id, line.quantity - line.receivedQuantity, null, line.category)
+        }
+    }
     suspend fun receiveShopping(itemId: String,quantity: Double,date: String?,category: Category) = update { r ->
         val item = r.shopping.first { it.id==itemId }
         require(item.orderId==null) { "This item already belongs to an order. Receive it from Orders." }

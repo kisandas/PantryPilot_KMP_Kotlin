@@ -26,6 +26,20 @@ class StockOrderTest {
         reopened.update {Records()};reopened.savePantry(egg());reopened.load()
         assertEquals(1,reopened.records.value.movements.size)
     }
+    @Test fun restockAddsConvertedSugarBatchesWithoutChangingOriginalExpiry() = runTest {
+        val sugar = egg().copy(name = "Sugar", normalizedName = "sugar", quantity = 10.5, unit = "kg")
+        val (repo, db) = fixture(Records(pantry = listOf(sugar)))
+        repo.reduceStock(sugar.id, 0.1, false, "")
+        repo.restock(sugar.id, 100.0, "g", null)
+        assertEquals(10.5, repo.records.value.pantry.sumOf { it.quantity }, 0.000001)
+        repo.restock(sugar.id, 0.1, "kg", null)
+        assertEquals(10.6, db.read().pantry.sumOf { it.quantity }, 0.000001)
+        assertEquals(sugar.expiryDate, db.read().pantry.first { it.id == sugar.id }.expiryDate)
+        assertTrue(db.read().shopping.isEmpty())
+        assertFailsWith<IllegalArgumentException> { repo.restock(sugar.id, 1.0, "L", null) }
+        assertEquals(10.6, db.read().pantry.sumOf { it.quantity }, 0.000001)
+    }
+
     @Test fun usingTwoEggsDepletesThatBatchAndRemovesItFromRecipeAvailability() = runTest {
         val (repo,_)=fixture(Records(pantry=listOf(egg())))
         repo.reduceStock("old",2.0,false,"Breakfast")
@@ -75,6 +89,35 @@ class StockOrderTest {
         assertEquals(2,repo.records.value.pantry.size);assertEquals(6.0,repo.records.value.pantry.sumOf {it.quantity})
         assertEquals(OrderStatus.Received,repo.records.value.orders.single().status)
     }
+    @Test fun bulkReceiptCommitsSelectedOutstandingLinesTogether() = runTest {
+        val eggs = shopping()
+        val rice = eggs.copy(id = "rice", name = "Rice", normalizedName = "rice", quantity = 500.0, unit = "g")
+        val milk = eggs.copy(id = "milk", name = "Milk", normalizedName = "milk", quantity = 1.0, unit = "L")
+        val (repo, db) = fixture(Records(shopping = listOf(eggs, rice, milk)))
+        val id = repo.createOrder("Store", "")
+        repo.placeOrder(id)
+        val lines = repo.records.value.orders.single().lines.associateBy { it.name }
+        val eggLine = lines.values.first { it.shoppingItemId == eggs.id }
+        val riceLine = lines.values.first { it.shoppingItemId == rice.id }
+        repo.receiveOrderLine(id, eggLine.id, 2.0, null, Category.Protein)
+
+        val selected = setOf(eggLine.id, riceLine.id)
+        val before = repo.records.value
+        db.fail = true
+        assertFailsWith<IllegalStateException> { repo.receiveOutstanding(id, selected) }
+        assertEquals(before, repo.records.value)
+
+        db.fail = false
+        repo.receiveOutstanding(id, selected)
+        val saved = repo.records.value
+        assertEquals(OrderStatus.PartiallyReceived, saved.orders.single().status)
+        assertEquals(6.0, saved.pantry.filter { it.normalizedName == "egg" }.sumOf { it.quantity })
+        assertEquals(500.0, saved.pantry.single { it.normalizedName == "rice" }.quantity)
+        assertFalse(saved.shopping.single { it.id == milk.id }.isPurchased)
+        assertFailsWith<IllegalArgumentException> { repo.receiveOutstanding(id, selected) }
+        assertEquals(saved, repo.records.value)
+    }
+
     @Test fun cancellationReturnsOnlyOutstandingQuantitiesToShopping() = runTest {
         val (repo,_)=fixture(Records(shopping=listOf(shopping())))
         val id=repo.createOrder("Store","");repo.placeOrder(id)

@@ -6,8 +6,8 @@ enum class Category { Vegetables, Fruits, Dairy, Grains, Protein, Spices, Other 
 val units = listOf("piece", "g", "kg", "ml", "L")
 @Serializable data class PantryItem(val id: String, val name: String, val normalizedName: String, val category: Category, val quantity: Double, val unit: String, val expiryDate: String? = null, val createdAt: Long, val updatedAt: Long)
 @Serializable data class ShoppingItem(val id: String, val name: String, val normalizedName: String, val quantity: Double, val unit: String, val isPurchased: Boolean = false, val createdAt: Long, val orderId: String? = null)
-data class RecipeIngredient(val displayName: String, val quantity: Double, val unit: String) { val normalizedName get() = com.app.meal.planner.domain.normalize(displayName) }
-data class Recipe(val id: String, val title: String, val description: String, val category: String, val preparationMinutes: Int, val servings: Int, val ingredients: List<RecipeIngredient>, val instructions: List<String>, val visual: String)
+@Serializable data class RecipeIngredient(val displayName: String, val quantity: Double, val unit: String) { val normalizedName get() = com.app.meal.planner.domain.normalize(displayName) }
+@Serializable data class Recipe(val id: String, val title: String, val description: String, val category: String, val preparationMinutes: Int, val servings: Int, val ingredients: List<RecipeIngredient>, val instructions: List<String>, val visual: String)
 @Serializable data class Records(
     val pantry: List<PantryItem> = emptyList(),
     val shopping: List<ShoppingItem> = emptyList(),
@@ -17,6 +17,7 @@ data class Recipe(val id: String, val title: String, val description: String, va
     val movements: List<StockMovement> = emptyList(),
     val stockTrackingInitialized: Boolean = false,
     val initialDataSeeded: Boolean = false,
+    val recipes: List<Recipe> = emptyList(),
 )
 
 @Serializable enum class OrderStatus { Draft, Placed, PartiallyReceived, Received, Cancelled }

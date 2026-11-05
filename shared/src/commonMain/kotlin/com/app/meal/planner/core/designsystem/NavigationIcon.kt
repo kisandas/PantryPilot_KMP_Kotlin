@@ -12,8 +12,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.*
 
 /** Small shared vectors avoid depending on platform symbol/emoji fonts. */
-@Composable fun NavigationIcon(destination: String) {
-    val color=MaterialTheme.colorScheme.primary
+@Composable fun NavigationIcon(destination: String, color: Color = MaterialTheme.colorScheme.primary) {
     Canvas(Modifier.size(22.dp)) {
         scale(size.width/24f,size.height/24f,Offset.Zero) {
             val outline=Stroke(1.8f,cap=StrokeCap.Round,join=StrokeJoin.Round)
@@ -23,6 +22,17 @@ import kotlin.math.*
                 drawPath(p,color,style=outline)
             }
             when(destination) {
+                "Edit" -> {
+                    path(4f to 16f, 16f to 4f, 20f to 8f, 8f to 20f, 3f to 21f, 4f to 16f)
+                    line(13f,7f,17f,11f)
+                }
+                "Delete" -> {
+                    path(6f to 7f,7f to 21f,17f to 21f,18f to 7f)
+                    path(9f to 7f,9f to 3f,15f to 3f,15f to 7f)
+                    line(4f,7f,20f,7f)
+                    line(10f,11f,10f,17f)
+                    line(14f,11f,14f,17f)
+                }
                 "Home" -> {path(3f to 10f,12f to 3f,21f to 10f);path(5f to 9f,5f to 21f,10f to 21f,10f to 14f,14f to 14f,14f to 21f,19f to 21f,19f to 9f)}
                 "Pantry" -> {drawRoundRect(color,Offset(4f,3f),Size(16f,18f),CornerRadius(2f),style=outline);line(4f,9f,20f,9f);line(4f,15f,20f,15f);line(11f,6f,13f,6f);line(11f,12f,13f,12f);line(11f,18f,13f,18f)}
                 "Recipes" -> {path(12f to 5f,8f to 3f,3f to 4f,3f to 19f,8f to 18f,12f to 20f,16f to 18f,21f to 19f,21f to 4f,16f to 3f,12f to 5f,12f to 20f);line(6f,8f,9f,9f);line(15f,9f,18f,8f)}

@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.PantryPilot" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FAF8F0</item>
+    </style>
+</resources>

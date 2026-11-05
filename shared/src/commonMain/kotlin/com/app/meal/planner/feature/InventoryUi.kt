@@ -1,11 +1,15 @@
 package com.app.meal.planner.feature
 
 import androidx.compose.foundation.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.graphics.Color
+import com.app.meal.planner.core.designsystem.NavigationIcon
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.semantics
@@ -30,17 +34,44 @@ fun statusLabel(status: OrderStatus): String = when(status) {
     OrderStatus.Cancelled -> "Cancelled"
 }
 
+internal fun quantityKeyboard(unit: String) = KeyboardOptions(
+    keyboardType = if (unit == "piece") KeyboardType.Number else KeyboardType.Decimal
+)
+
+@Composable
+internal fun ItemEditActions(enabled: Boolean, edit: () -> Unit, delete: () -> Unit) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalIconButton(edit, enabled = enabled,
+            modifier = Modifier.semantics { contentDescription = "Edit item" },
+            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFDCEEFF))) {
+            NavigationIcon("Edit", Color(0xFF185A92))
+        }
+        FilledTonalIconButton(delete, enabled = enabled,
+            modifier = Modifier.semantics { contentDescription = "Delete item" },
+            colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color(0xFFFDE4E4))) {
+            NavigationIcon("Delete", Color(0xFFA12828))
+        }
+    }
+}
+
 @Composable fun StockControls(item: PantryItem, s: PilotUiState, dispatch: (Intent)->Unit) {
-    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
-        TextButton(enabled=!s.saving && item.quantity>0 && expiry(item.expiryDate,s.today)!=Expiry.Expired,onClick={dispatch(Intent.Stock(StockAction(item.id,quantity=stockNumber(minOf(1.0,item.quantity)))))}) { Text("Use stock") }
-        TextButton(enabled=!s.saving && item.quantity>0,onClick={dispatch(Intent.Stock(StockAction(item.id,waste=true,quantity=stockNumber(item.quantity))))}) { Text("Record waste") }
-        TextButton(onClick={dispatch(Intent.History(item.id))}) { Text("History") }
-        TextButton(enabled=!s.saving,onClick={dispatch(Intent.Edit(Editor(shopping=true,name=item.name,unit=item.unit)))}) {Text("Restock")}
+    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+        Button(enabled=!s.saving && item.quantity>0 && expiry(item.expiryDate,s.today)!=Expiry.Expired,onClick={dispatch(Intent.Stock(StockAction(item.id,quantity=stockNumber(minOf(1.0,item.quantity)))))}) { Text("Use stock") }
+        FilledTonalButton(colors=ButtonDefaults.filledTonalButtonColors(containerColor=MaterialTheme.colorScheme.errorContainer, contentColor=MaterialTheme.colorScheme.onErrorContainer),enabled=!s.saving && item.quantity>0,onClick={dispatch(Intent.Stock(StockAction(item.id,waste=true,quantity=stockNumber(item.quantity))))}) { Text("Record waste") }
+        FilledTonalButton(onClick={dispatch(Intent.History(item.id))}) { Text("History") }
+        FilledTonalButton(enabled=!s.saving,onClick={dispatch(Intent.Edit(Editor(name=item.name,unit=item.unit,category=item.category,restockId=item.id,restockUnit=item.unit)))}) {Text("Restock")}
     }
 }
 
 @Composable fun StockTotals(pantry: List<PantryItem>) {
-    val totals=pantry.groupBy {it.normalizedName to it.unit}.values.map {batches -> Triple(batches.first().name,batches.first().unit,batches.sumOf {it.quantity})}
+    val totals = pantry.groupBy { it.normalizedName to compatibleStockUnits(it.unit) }.values.map { batches ->
+        val displayUnit = when {
+            batches.any { it.unit == "kg" } -> "kg"
+            batches.any { it.unit == "L" } -> "L"
+            else -> batches.first().unit
+        }
+        Triple(batches.first().name, displayUnit, batches.sumOf { convertStockQuantity(it.quantity, it.unit, displayUnit) })
+    }
     if(totals.isNotEmpty()) {
         Text("Totals across batches",style=MaterialTheme.typography.labelLarge)
         Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -50,14 +81,14 @@ fun statusLabel(status: OrderStatus): String = when(status) {
 }
 
 @Composable fun ShoppingStockControls(item: ShoppingItem,s: PilotUiState,dispatch: (Intent)->Unit) {
-    Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
         if(item.orderId==null) {
-            TextButton(enabled=!s.saving,onClick={dispatch(Intent.Receipt(ReceiptEditor(shoppingItemId=item.id,quantity=stockNumber(item.quantity))))}) {Text("Receive into pantry")}
+            Button(enabled=!s.saving,onClick={dispatch(Intent.Receipt(ReceiptEditor(shoppingItemId=item.id,quantity=stockNumber(item.quantity))))}) {Text("Receive into pantry")}
         } else {
             val order=s.records.orders.find {it.id==item.orderId}
-            TextButton(onClick={dispatch(Intent.Navigate("Orders")); dispatch(Intent.OrdersFilter(s.orders.copy(selected=item.orderId)))}) {Text("${order?.number ?: "Order"} · ${order?.let {statusLabel(it.status)} ?: "View"}")}
+            FilledTonalButton(onClick={dispatch(Intent.Navigate("Orders")); dispatch(Intent.OrdersFilter(s.orders.copy(selected=item.orderId)))}) {Text("${order?.number ?: "Order"} · ${order?.let {statusLabel(it.status)} ?: "View"}")}
         }
-        if(item.isPurchased) TextButton(enabled=!s.saving,onClick={dispatch(Intent.BuyAgain(item.id))}) {Text("Buy again")}
+        if(item.isPurchased) FilledTonalButton(enabled=!s.saving,onClick={dispatch(Intent.BuyAgain(item.id))}) {Text("Buy again")}
     }
 }
 
@@ -67,15 +98,18 @@ fun statusLabel(status: OrderStatus): String = when(status) {
             Checkbox(item.isPurchased,{dispatch(Intent.Purchased(item.id))},enabled=!s.saving && item.orderId==null,modifier=Modifier.semantics {contentDescription="Purchased: ${item.name}"})
             Column(Modifier.weight(1f)) {Text(item.name,fontWeight=FontWeight.SemiBold);Text("${stockNumber(item.quantity)} ${item.unit}",style=MaterialTheme.typography.bodySmall)}
             if(item.orderId==null) {
-                TextButton(enabled=!s.saving,onClick={dispatch(Intent.Edit(Editor(item.id,true,item.name,stockNumber(item.quantity),item.unit)))}){Text("Edit")}
-                TextButton(enabled=!s.saving,onClick={dispatch(Intent.Confirm("shopping:${item.id}"))}){Text("Delete")}
+                ItemEditActions(
+                    enabled = !s.saving,
+                    edit = { dispatch(Intent.Edit(Editor(item.id, true, item.name, stockNumber(item.quantity), item.unit))) },
+                    delete = { dispatch(Intent.Confirm("shopping:${item.id}")) }
+                )
             }
         }
         ShoppingStockControls(item,s,dispatch)
     }}
 }
 
-fun LazyListScope.ordersContent(s: PilotUiState, dispatch: (Intent)->Unit) {
+fun LazyListScope.ordersContent(s: PilotUiState, checked: Set<String>, toggle: (String)->Unit, dispatch: (Intent)->Unit) {
     val selected=s.records.orders.find {it.id==s.orders.selected}
     if(selected==null) {
         item { Text("Household purchases",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold); Text("Plan a purchase, receive each delivery, and track where your stock came from.") }
@@ -88,10 +122,34 @@ fun LazyListScope.ordersContent(s: PilotUiState, dispatch: (Intent)->Unit) {
             Text("${order.number} · ${order.store.ifBlank {"Household purchase"}}",style=MaterialTheme.typography.titleLarge)
             Text("${statusLabel(order.status)} · ${order.lines.size} lines · ${stockTime(order.createdAt)}")
             Text(order.lines.joinToString { "${it.name} ${stockNumber(it.receivedQuantity)}/${stockNumber(it.quantity)} ${it.unit}" },style=MaterialTheme.typography.bodySmall)
-            TextButton({dispatch(Intent.OrdersFilter(s.orders.copy(selected=order.id)))}) {Text("View order")}
+            OutlinedButton({dispatch(Intent.OrdersFilter(s.orders.copy(selected=order.id)))}) {Text("View order")}
         } } }
     } else {
-        item {TextButton({dispatch(Intent.OrdersFilter(s.orders.copy(selected=null)))}){Text("‹ All orders")}}
+        item {
+            OutlinedButton({dispatch(Intent.OrdersFilter(s.orders.copy(selected=null)))}) {
+                Text("Back to all orders")
+            }
+        }
+        val canReceive = selected.status in listOf(OrderStatus.Placed, OrderStatus.PartiallyReceived)
+        val selectedLines = selected.lines.filter { it.id in checked && it.quantity - it.receivedQuantity > STOCK_EPSILON }
+        if (canReceive) item {
+            var confirm by remember(selected.id) { mutableStateOf(false) }
+            Button({ confirm = true }, enabled = selectedLines.isNotEmpty() && !s.saving) {
+                Text("Receive selected (${selectedLines.size})")
+            }
+            if (confirm) AlertDialog(
+                onDismissRequest = { confirm = false },
+                title = { Text("Receive selected items?") },
+                text = { Text("Record the outstanding quantities for ${selectedLines.size} selected items without expiry dates. Use the individual receive button to set a date or quantity.") },
+                confirmButton = {
+                    Button({
+                        confirm = false
+                        dispatch(Intent.ReceiveSelected(selected.id, selectedLines.map { it.id }.toSet()))
+                    }, enabled = selectedLines.isNotEmpty() && !s.saving) { Text("Receive delivery") }
+                },
+                dismissButton = { TextButton({ confirm = false }) { Text("Cancel") } }
+            )
+        }
         item {Text("${selected.number} · ${selected.store.ifBlank {"Household purchase"}}",style=MaterialTheme.typography.headlineSmall,fontWeight=FontWeight.Bold); Text(statusLabel(selected.status));Text("Created ${stockTime(selected.createdAt)}",style=MaterialTheme.typography.bodySmall);if(selected.notes.isNotBlank()) Text(selected.notes)}
         if(selected.status==OrderStatus.Draft) item {
             Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -102,7 +160,13 @@ fun LazyListScope.ordersContent(s: PilotUiState, dispatch: (Intent)->Unit) {
         }
         if(selected.status in listOf(OrderStatus.Draft,OrderStatus.Placed,OrderStatus.PartiallyReceived)) item {TextButton(enabled=!s.saving,onClick={dispatch(Intent.Confirm("cancel-order:${selected.id}"))}){Text("Cancel outstanding purchase")}}
         items(selected.lines,key={it.id}) { line -> Card { Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-            Text(line.name,style=MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (canReceive && line.quantity - line.receivedQuantity > STOCK_EPSILON) {
+                    Checkbox(line.id in checked, { toggle(line.id) }, enabled = !s.saving,
+                        modifier = Modifier.semantics { contentDescription = "Select ${line.name} for delivery" })
+                }
+                Text(line.name, style = MaterialTheme.typography.titleMedium)
+            }
             Text("Ordered ${stockNumber(line.quantity)} ${line.unit} · Received ${stockNumber(line.receivedQuantity)} ${line.unit}")
             val remaining=(line.quantity-line.receivedQuantity).coerceAtLeast(0.0)
             Text(if(remaining<=STOCK_EPSILON) "Fully received" else "${if(selected.status==OrderStatus.Cancelled) "Cancelled" else "Outstanding"}: ${stockNumber(remaining)} ${line.unit}")
@@ -137,8 +201,8 @@ fun LazyListScope.historyContent(s: PilotUiState,dispatch: (Intent)->Unit) {
         InventoryDialog(if(form.waste) "Record food waste" else "Record stock usage",s.saving,form.error,{dispatch(Intent.Stock(null))},{dispatch(Intent.SaveStock)}) {
             Text("${item?.name ?: "Batch removed"} · ${item?.let {"${stockNumber(it.quantity)} ${it.unit} remaining"} ?: ""}")
             InventoryChoices(listOf("Used","Waste"),if(form.waste) "Waste" else "Used") {if(!s.saving) dispatch(Intent.ChangeForm(FormType.Stock,FormField.Waste,(it=="Waste").toString()))}
-            OutlinedTextField(form.quantity,{dispatch(Intent.ChangeForm(FormType.Stock,FormField.Quantity,it))},enabled=!s.saving,label={Text("Quantity to subtract (${item?.unit ?: ""})")},singleLine=true)
-            OutlinedTextField(form.note,{dispatch(Intent.ChangeForm(FormType.Stock,FormField.Note,it))},enabled=!s.saving,label={Text("Reason / meal (optional)")})
+            OutlinedTextField(modifier=Modifier.fillMaxWidth(),value=form.quantity,onValueChange={dispatch(Intent.ChangeForm(FormType.Stock,FormField.Quantity,it))},enabled=!s.saving,label={Text("Quantity to subtract (${item?.unit ?: ""})")},singleLine=true)
+            OutlinedTextField(modifier=Modifier.fillMaxWidth(),value=form.note,onValueChange={dispatch(Intent.ChangeForm(FormType.Stock,FormField.Note,it))},enabled=!s.saving,label={Text("Reason / meal (optional)")})
             Text("Saving reduces this batch immediately. It cannot make the balance negative. Expired food can be recorded as waste.",style=MaterialTheme.typography.bodySmall)
         }
     }
@@ -148,8 +212,8 @@ fun LazyListScope.historyContent(s: PilotUiState,dispatch: (Intent)->Unit) {
         InventoryDialog("Receive into pantry",s.saving,form.error,{dispatch(Intent.Receipt(null))},{dispatch(Intent.SaveReceipt)}) {
             Text("${line?.name ?: shopping?.name} · ${line?.unit ?: shopping?.unit}")
             Text("A new batch will be added. Older stock and expiry dates stay separate.",style=MaterialTheme.typography.bodySmall)
-            OutlinedTextField(form.quantity,{dispatch(Intent.ChangeForm(FormType.Receipt,FormField.Quantity,it))},enabled=!s.saving,label={Text("Quantity received now")},singleLine=true)
-            OutlinedTextField(form.date,{dispatch(Intent.ChangeForm(FormType.Receipt,FormField.Date,it))},enabled=!s.saving,label={Text("Expiry YYYY-MM-DD (optional)")},singleLine=true)
+            OutlinedTextField(modifier=Modifier.fillMaxWidth(),value=form.quantity,onValueChange={dispatch(Intent.ChangeForm(FormType.Receipt,FormField.Quantity,it))},enabled=!s.saving,label={Text("Quantity received now")},singleLine=true)
+            ExpiryDateField(form.date,enabled=!s.saving) {dispatch(Intent.ChangeForm(FormType.Receipt,FormField.Date,it))}
             Text("Category")
             InventoryChoices(Category.entries.map {it.name},form.category.name) {if(!s.saving) dispatch(Intent.ChangeForm(FormType.Receipt,FormField.Category,it))}
             Text("Partial delivery? Enter only the quantity received today. The rest stays outstanding.",style=MaterialTheme.typography.bodySmall)
@@ -157,13 +221,13 @@ fun LazyListScope.historyContent(s: PilotUiState,dispatch: (Intent)->Unit) {
     }
     s.orderEditor?.let { form ->
         InventoryDialog(if(form.order==null) "New household purchase" else "Edit ${form.order.number}",s.saving,form.error,{dispatch(Intent.OrderEdit(null))},{dispatch(Intent.SaveOrder)}) {
-            OutlinedTextField(form.store,{dispatch(Intent.ChangeForm(FormType.Order,FormField.Store,it))},enabled=!s.saving,label={Text("Store / supplier (optional)")},singleLine=true)
-            OutlinedTextField(form.notes,{dispatch(Intent.ChangeForm(FormType.Order,FormField.Note,it))},enabled=!s.saving,label={Text("Notes (optional)")})
+            OutlinedTextField(modifier=Modifier.fillMaxWidth(),value=form.store,keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Text),onValueChange={dispatch(Intent.ChangeForm(FormType.Order,FormField.Store,it))},enabled=!s.saving,label={Text("Store / supplier (optional)")},singleLine=true)
+            OutlinedTextField(modifier=Modifier.fillMaxWidth(),value=form.notes,onValueChange={dispatch(Intent.ChangeForm(FormType.Order,FormField.Note,it))},enabled=!s.saving,label={Text("Notes (optional)")})
             if(form.order==null) {
                 Text("These unpurchased shopping items will be linked to the draft:")
                 s.records.shopping.filter {!it.isPurchased && it.orderId==null}.forEach {Text("• ${it.name} · ${stockNumber(it.quantity)} ${it.unit}")}
             } else form.order.lines.forEach { line ->
-                OutlinedTextField(form.quantities[line.id] ?: "",{dispatch(Intent.ChangeForm(FormType.Order,FormField.OrderLineQuantity,it,line.id))},enabled=!s.saving,label={Text("${line.name} (${line.unit})")},singleLine=true)
+                OutlinedTextField(modifier=Modifier.fillMaxWidth(),value=form.quantities[line.id] ?: "",keyboardOptions=quantityKeyboard(line.unit),onValueChange={dispatch(Intent.ChangeForm(FormType.Order,FormField.OrderLineQuantity,it,line.id))},enabled=!s.saving,label={Text("${line.name} (${line.unit})")},singleLine=true)
             }
         }
     }

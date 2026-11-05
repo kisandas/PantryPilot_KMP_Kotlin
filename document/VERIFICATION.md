@@ -1,5 +1,23 @@
 # Verification results
 
+## Latest user-recipe and form update
+
+Verified on Windows on 4 November 2026. This section supersedes older catalog-based walkthroughs below.
+
+- 37 Android host tests passed, zero failures/errors.
+- 39 headless-browser tests passed, zero failures/errors.
+- 38 connected-device tests passed on physical Android 16, including recipe rows persisted by actual SQLite across close/reopen.
+- Actual IndexedDB persistence checks now include user recipe payloads. New common tests cover an empty initial recipe collection, create/update/delete, favorite cleanup, validation and failed saves, recipe cooking/shortfalls, and editor/favorite feedback.
+- Android APK and web preview packaging passed in the combined regression run. The follow-up host/browser tests and Android/web rebuild also passed after isolating native date-dialog events and aligning form fields. The updated Android APK installed successfully.
+- Browser UI on the isolated localhost:8098 origin: created a personal recipe with a selected local photo and instruction, toggled filled/outlined hearts and verified both snackbar messages, edited its title, refreshed, and verified the saved title and favorite. The deletion confirmation was inspected and cancelled; actual deletion/favorite cleanup is covered by automated tests.
+- Responsive recipe card inspected at 390x844. Screenshots: user-recipe-card.png, user-recipe-mobile.png, recipe-favorite-feedback.png. Web expiry input opened the browser calendar and returned a selected date to the ingredient form; that unsaved ingredient was cancelled. Final DOM-native confirmation selected 2026-11-21 while preserving the piece unit (expiry-date-picker.png). Legacy canvas accessibility clicks were unreliable for the native date popup, so its DOM controls were used for this check.
+- iOS date-wheel source is implemented but its compilation and runtime remain unverified on Windows. Android native date-dialog interaction and absence of third-party keyboard bubbles still require device UI checks; disabling app autofill does not change keyboard-owned suggestions.
+
+The final Android launch check exposed an older Koin Compose initialization failure. App now initializes an isolated Koin context before composing children. The subsequent host/browser tests and Android/web builds passed, and final web startup rendered successfully. The physical device disconnected before the repaired APK could be installed. An emulator check was started, then stopped at the user's request; installation did not finish. Final Android runtime verification of this startup fix remains pending.
+
+See RECIPE_MANAGEMENT.md for behavior and data preservation details. No user database reset was performed.
+
+
 ## Latest Xcode 16.0 compatibility and recipe update
 
 Verified on Windows on 4 November 2026 with JDK 21, Kotlin 2.1.20, Compose 1.8.0, AGP 8.7.2 and Gradle 8.11. This section supersedes the historical results below.

@@ -8,7 +8,7 @@ PantryPilot now tracks household stock movements as well as expiry dates. It doe
 2. Choose **Use stock**, enter **2**, optionally enter `Breakfast`, then Save.
 3. That batch becomes **0 piece — Out of stock**. It no longer counts toward recipe availability or use-soon suggestions.
 4. Open its **History** to see the dated `Used -2 piece` entry and the resulting zero balance.
-5. Choose **Restock** and enter 6 eggs in Shopping.
+5. Open Shopping and add 6 eggs to plan the purchase.
 6. When the eggs arrive, choose **Receive into pantry**, enter 6 and their new expiry date, then Save.
 7. A purchase order and receipt are recorded. A new batch contains 6 eggs with the new expiry. The old batch and its history remain separate. Pantry's **Totals across batches** shows the combined balance.
 
@@ -33,7 +33,7 @@ There is no seller-facing sales workflow, accounting, online store integration, 
 - Exhausted batches remain at zero for history; they do not count as available ingredients. You can remove a batch if desired; its stock history is retained.
 - Removing a batch records its remaining quantity as Removed, so it does not silently disappear from the stock ledger.
 - **History** shows dated opening balances, purchase receipts, usage, waste, corrections and removals. Each entry stores the batch balance after that movement.
-- **Restock** opens a new shopping-item form. **Buy again** on a purchased shopping item creates a new unlinked purchase item.
+- **Restock** adds a new pantry batch directly. Enter the amount in a compatible unit and optionally select the new batch expiry date. **Buy again** on a purchased shopping item creates a new unlinked purchase item.
 
 A purchased checkbox alone is still a shopping reminder; it does not invent a receipt date, expiry or pantry batch. Use Receive into pantry to record the actual arrival. Shopping items linked to orders are managed through their order so they cannot be checked, edited or deleted inconsistently.
 
@@ -51,7 +51,7 @@ The UI, order/stock models, rules, row codec, repository and state owner are sha
 
 Existing records are loaded without resetting their balances. The first successful upgraded load records their opening balances once. Subsequent loading does not duplicate opening history. New records use additional `order`, `movement` and `stockTracking` record kinds in the existing database table/object store; no destructive table or database recreation occurs.
 
-Do not run an older app version against an upgraded database: the old version does not understand order/history records. Reset local data intentionally removes orders and stock history as well as pantry and shopping data. Predefined pantry/shopping entries are inserted once on a fresh database. No Load demo data action remains. Existing records are preserved; resets and depletion do not replenish starter stock.
+Do not run an older app version against an upgraded database: the old version does not understand order/history records. Reset local data intentionally removes orders and stock history as well as pantry and shopping data. A fresh database has empty pantry and shopping lists. Existing installations retain saved records.
 
 Data remains local to the current app/device/browser origin. Keep one active editing browser tab; concurrent multi-tab edits and device synchronization are not supported. The app has no automatic consumption sensors or external order integration.
 
